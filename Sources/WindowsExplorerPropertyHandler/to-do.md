@@ -1,0 +1,2 @@
+- Write the property handler in C++ to support Explorer-native tagging
+- Will need to communicate between Python and C++ via IPC (e.g., sockets, named pipes, or COM automation)

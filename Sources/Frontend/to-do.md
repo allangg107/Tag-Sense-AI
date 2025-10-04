@@ -1,0 +1,2 @@
+- Figure out look and flow
+- Use React to create interace for user
