@@ -1,0 +1,2 @@
+# Simple requirements for TinyLlama Hello World
+requests>=2.31.0
