@@ -1,41 +1,79 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
+import { open } from "@tauri-apps/api/dialog";
 
 function App() {
-  const [prompt, setPrompt] = useState("");
-  const [response, setResponse] = useState("");
+  const [selectedFile, setSelectedFile] = useState("");
+  const [tagContext, setTagContext] = useState("");
+  const [generatedTags, setGeneratedTags] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isBackendConnected, setIsBackendConnected] = useState(false);
+  const [error, setError] = useState("");
 
-  // Check Ollama connection on app start
+  // Check backend connection on app start
   useEffect(() => {
-    checkConnection();
+    checkBackendConnection();
   }, []);
 
-  const checkConnection = async () => {
+  const checkBackendConnection = async () => {
     try {
-      const result = await invoke("check_ollama_status");
-      setIsConnected(result);
+      const result = await invoke("check_backend_status");
+      setIsBackendConnected(result);
     } catch (error) {
-      console.error("Failed to check Ollama status:", error);
-      setIsConnected(false);
+      console.error("Failed to check backend status:", error);
+      setIsBackendConnected(false);
     }
   };
 
-  const handleSubmit = async () => {
-    if (!prompt.trim()) return;
+  const selectFile = async () => {
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [
+          {
+            name: "Text Files",
+            extensions: ["txt", "md", "py", "js", "html", "css", "json", "xml", "docx", "pdf"]
+          }
+        ]
+      });
+      
+      if (selected) {
+        setSelectedFile(selected);
+        setError("");
+      }
+    } catch (error) {
+      console.error("Error selecting file:", error);
+      setError("Failed to select file");
+    }
+  };
+
+  const generateTags = async () => {
+    if (!selectedFile) {
+      setError("Please select a file first");
+      return;
+    }
     
     setIsLoading(true);
-    setResponse("");
+    setGeneratedTags([]);
+    setError("");
 
     try {
-      const result = await invoke("send_prompt_to_tinyllama", {
-        prompt: prompt.trim()
+      const result = await invoke("process_file_for_tags", {
+        filePath: selectedFile,
+        context: tagContext.trim() || null
       });
-      setResponse(result);
+      
+      if (result.success) {
+        setGeneratedTags(result.tags || []);
+        if (result.tags.length === 0) {
+          setError("No tags were generated for this file");
+        }
+      } else {
+        setError(result.error || "Failed to process file");
+      }
     } catch (error) {
       console.error("Error:", error);
-      setResponse(`Error: ${error}`);
+      setError(`Error: ${error}`);
     } finally {
       setIsLoading(false);
     }
@@ -43,24 +81,24 @@ function App() {
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && e.ctrlKey) {
-      handleSubmit();
+      generateTags();
     }
   };
 
   return (
     <div className="app">
       <div className="header">
-        <h1>🦙 Tag Sense AI</h1>
-        <p>Chat with TinyLlama through Ollama</p>
+        <h1>🏷️ Tag Sense AI</h1>
+        <p>Generate intelligent tags for your files using TinyLlama</p>
       </div>
 
       <div className="status-indicator">
-        <div className={`status-dot ${isConnected ? 'status-connected' : 'status-disconnected'}`}></div>
+        <div className={`status-dot ${isBackendConnected ? 'status-connected' : 'status-disconnected'}`}></div>
         <span>
-          {isConnected ? "Connected to Ollama" : "Ollama not available"}
+          {isBackendConnected ? "Backend connected" : "Backend not available"}
         </span>
         <button 
-          onClick={checkConnection}
+          onClick={checkBackendConnection}
           style={{ 
             marginLeft: '10px', 
             padding: '2px 8px', 
@@ -75,36 +113,81 @@ function App() {
         </button>
       </div>
 
-      <div className="chat-container">
-        <div className="input-section">
+      <div className="tagging-container">
+        <div className="file-selection">
+          <h3>1. Select File to Tag</h3>
+          <div className="file-picker">
+            <button
+              className="select-file-button"
+              onClick={selectFile}
+              disabled={isLoading}
+            >
+              📁 Choose File
+            </button>
+            {selectedFile && (
+              <div className="selected-file">
+                <span className="file-icon">📄</span>
+                <span className="file-name">{selectedFile.split('\\').pop()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="context-section">
+          <h3>2. Add Context (Optional)</h3>
           <textarea
-            className="text-input"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            className="context-input"
+            value={tagContext}
+            onChange={(e) => setTagContext(e.target.value)}
             onKeyDown={handleKeyPress}
-            placeholder="Type your message to TinyLlama here... (Ctrl+Enter to send)"
-            disabled={isLoading || !isConnected}
+            placeholder="Describe what kind of tags you're looking for, or provide context about the file content... (optional)"
+            disabled={isLoading || !isBackendConnected}
+            rows={3}
           />
-          
+        </div>
+        
+        <div className="action-section">
           <button
-            className="send-button"
-            onClick={handleSubmit}
-            disabled={isLoading || !prompt.trim() || !isConnected}
+            className="generate-button"
+            onClick={generateTags}
+            disabled={isLoading || !selectedFile || !isBackendConnected}
           >
-            {isLoading ? "Sending..." : "Send to TinyLlama"}
+            {isLoading ? "🔄 Generating Tags..." : "🏷️ Generate Tags"}
           </button>
         </div>
 
-        <div className="response-section">
-          <h3>Response:</h3>
-          <div className={`response-box ${isLoading ? 'loading' : ''} ${response.startsWith('Error:') ? 'error' : ''}`}>
-            {isLoading ? "TinyLlama is thinking..." : response || "No response yet. Send a message to get started!"}
+        {error && (
+          <div className="error-message">
+            ⚠️ {error}
+          </div>
+        )}
+
+        <div className="results-section">
+          <h3>Generated Tags:</h3>
+          <div className="tags-container">
+            {isLoading ? (
+              <div className="loading-tags">
+                🤔 TinyLlama is analyzing your file...
+              </div>
+            ) : generatedTags.length > 0 ? (
+              <div className="tags-list">
+                {generatedTags.map((tag, index) => (
+                  <span key={index} className="tag-item">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="no-tags">
+                Select a file and click "Generate Tags" to get started!
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#718096', textAlign: 'center' }}>
-        <p>💡 Tip: Use Ctrl+Enter to send your message quickly</p>
+        <p>💡 Tip: Use Ctrl+Enter in the context box to quickly generate tags</p>
       </div>
     </div>
   );

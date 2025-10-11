@@ -1,0 +1,12 @@
+This is a sample text file for testing the Tag Sense AI system.
+
+It contains information about machine learning, artificial intelligence, and natural language processing.
+
+The system should be able to extract meaningful tags from this content, such as:
+- AI
+- Machine Learning
+- Text Processing
+- Natural Language Processing
+- Technology
+
+This file will help us verify that the text extraction and tag generation features are working correctly.

@@ -1,2 +1,10 @@
 # Simple requirements for TinyLlama Hello World
 requests>=2.31.0
+
+# File processing and text extraction
+python-docx>=0.8.11
+PyPDF2>=3.0.0
+
+# Web API framework
+flask>=2.3.0
+flask-cors>=4.0.0
