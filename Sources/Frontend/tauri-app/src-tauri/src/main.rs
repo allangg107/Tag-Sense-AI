@@ -8,6 +8,8 @@ struct TagResponse {
     success: bool,
     tags: Vec<String>,
     error: Option<String>,
+    file_type: Option<String>,
+    model_used: Option<String>,
 }
 
 // Check if Python backend is running
@@ -46,7 +48,7 @@ async fn process_file_for_tags(file_path: String, context: Option<String>) -> Re
     match client
         .post("http://127.0.0.1:5000/api/process-file")
         .json(&payload)
-        .timeout(std::time::Duration::from_secs(60)) // Longer timeout for file processing
+        .timeout(std::time::Duration::from_secs(360)) // 6 minutes timeout for vision model processing
         .send()
         .await
     {
@@ -67,11 +69,19 @@ async fn process_file_for_tags(file_path: String, context: Option<String>) -> Re
                         let error = json.get("error")
                             .and_then(|e| e.as_str())
                             .map(|s| s.to_string());
+                        let file_type = json.get("file_type")
+                            .and_then(|f| f.as_str())
+                            .map(|s| s.to_string());
+                        let model_used = json.get("model_used")
+                            .and_then(|m| m.as_str())
+                            .map(|s| s.to_string());
                         
                         Ok(TagResponse {
                             success,
                             tags,
                             error,
+                            file_type,
+                            model_used,
                         })
                     }
                     Err(e) => Err(format!("Failed to parse response: {}", e)),

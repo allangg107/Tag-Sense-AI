@@ -13,9 +13,10 @@ export default defineConfig(async () => ({
   server: {
     port: 1420,
     strictPort: true,
+    hmr: false, // Disable hot module replacement
     watch: {
       // 3. tell vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      ignored: ["**/src-tauri/**", "**/*"], // Ignore all file changes to prevent restarts
     },
   },
 }));

@@ -9,6 +9,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isBackendConnected, setIsBackendConnected] = useState(false);
   const [error, setError] = useState("");
+  const [fileType, setFileType] = useState("");
+  const [modelUsed, setModelUsed] = useState("");
 
   // Check backend connection on app start
   useEffect(() => {
@@ -31,8 +33,16 @@ function App() {
         multiple: false,
         filters: [
           {
+            name: "All Supported Files",
+            extensions: ["txt", "md", "py", "js", "html", "css", "json", "xml", "docx", "pdf", "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif"]
+          },
+          {
             name: "Text Files",
             extensions: ["txt", "md", "py", "js", "html", "css", "json", "xml", "docx", "pdf"]
+          },
+          {
+            name: "Image Files",
+            extensions: ["jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif"]
           }
         ]
       });
@@ -40,6 +50,11 @@ function App() {
       if (selected) {
         setSelectedFile(selected);
         setError("");
+        
+        // Determine if it's an image file for UI purposes
+        const extension = selected.split('.').pop().toLowerCase();
+        const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif'];
+        setFileType(imageExts.includes(extension) ? 'image' : 'text');
       }
     } catch (error) {
       console.error("Error selecting file:", error);
@@ -65,6 +80,7 @@ function App() {
       
       if (result.success) {
         setGeneratedTags(result.tags || []);
+        setModelUsed(result.model_used || "");
         if (result.tags.length === 0) {
           setError("No tags were generated for this file");
         }
@@ -89,7 +105,7 @@ function App() {
     <div className="app">
       <div className="header">
         <h1>🏷️ Tag Sense AI</h1>
-        <p>Generate intelligent tags for your files using TinyLlama</p>
+        <p>Generate intelligent tags for text files and images using AI</p>
       </div>
 
       <div className="status-indicator">
@@ -126,25 +142,32 @@ function App() {
             </button>
             {selectedFile && (
               <div className="selected-file">
-                <span className="file-icon">📄</span>
+                <span className="file-icon">{fileType === 'image' ? '�️' : '�📄'}</span>
                 <span className="file-name">{selectedFile.split('\\').pop()}</span>
+                {fileType && (
+                  <span className="file-type-badge">
+                    {fileType === 'image' ? 'Image' : 'Text'}
+                  </span>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        <div className="context-section">
-          <h3>2. Add Context (Optional)</h3>
-          <textarea
-            className="context-input"
-            value={tagContext}
-            onChange={(e) => setTagContext(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Describe what kind of tags you're looking for, or provide context about the file content... (optional)"
-            disabled={isLoading || !isBackendConnected}
-            rows={3}
-          />
-        </div>
+        {fileType === 'text' && (
+          <div className="context-section">
+            <h3>2. Add Context (Optional)</h3>
+            <textarea
+              className="context-input"
+              value={tagContext}
+              onChange={(e) => setTagContext(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Describe what kind of tags you're looking for, or provide context about the file content... (optional)"
+              disabled={isLoading || !isBackendConnected}
+              rows={3}
+            />
+          </div>
+        )}
         
         <div className="action-section">
           <button
@@ -164,10 +187,21 @@ function App() {
 
         <div className="results-section">
           <h3>Generated Tags:</h3>
+          {modelUsed && (
+            <div className="model-indicator">
+              <span className="model-badge">
+                {modelUsed === 'tinyllama' ? '🤖 TinyLlama' : 
+                 modelUsed?.includes('llama3.2-vision') ? '👁️ Llama 3.2 Vision' : 
+                 `🤖 ${modelUsed}`}
+              </span>
+            </div>
+          )}
           <div className="tags-container">
             {isLoading ? (
               <div className="loading-tags">
-                🤔 TinyLlama is analyzing your file...
+                {fileType === 'image' ? 
+                  '👁️ Vision AI is analyzing your image... (This may take 1-2 minutes for the first image)' : 
+                  '🤔 TinyLlama is analyzing your file...'}
               </div>
             ) : generatedTags.length > 0 ? (
               <div className="tags-list">
@@ -187,7 +221,7 @@ function App() {
       </div>
 
       <div style={{ marginTop: '2rem', fontSize: '0.9rem', color: '#718096', textAlign: 'center' }}>
-        <p>💡 Tip: Use Ctrl+Enter in the context box to quickly generate tags</p>
+        <p>💡 Tip: {fileType === 'text' ? 'Use Ctrl+Enter in the context box to quickly generate tags' : 'Select text files or images for AI-powered tag generation'}</p>
       </div>
     </div>
   );
