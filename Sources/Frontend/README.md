@@ -1,16 +1,18 @@
-# Tag Sense AI - Tauri Frontend
+# Tag Sense AI
 
-A simple desktop app built with React + Tauri to interface with TinyLlama through Ollama.
+Desktop app to interface with an LLM in order to generate suggested tags for files.
+
+<img width="1918" height="1078" alt="image" src="https://github.com/user-attachments/assets/69744d0c-b94a-4d95-b659-1b38a4c3323e" />
 
 ## Prerequisites
 
 1. **Node.js** (v16 or later)
 2. **Rust** (latest stable version)
-3. **Ollama** with TinyLlama installed (you already have this ✅)
+3. **Ollama** with TinyLlama installed
 
 ## Setup Instructions
 
-### 1. Install Rust (if not already installed)
+### 1. Install Rust
 ```bash
 # Windows - download from https://rustup.rs/ or use:
 winget install Rustlang.Rustup
@@ -23,7 +25,7 @@ npm install -g @tauri-apps/cli
 
 ### 3. Install Dependencies
 ```bash
-cd "C:\Users\Allan\OneDrive\Programming\Tag-Sense-AI\Sources\Frontend\tauri-app"
+cd "\Tag-Sense-AI\Sources\Frontend\tauri-app"
 npm install
 ```
 
@@ -39,16 +41,6 @@ npm run tauri dev
 npm run tauri build
 ```
 
-## Features
-
-- ✅ Simple, clean UI
-- ✅ Text input box for prompts
-- ✅ Send button to submit requests
-- ✅ Response display area
-- ✅ Connection status indicator
-- ✅ Keyboard shortcut (Ctrl+Enter to send)
-- ✅ Loading states and error handling
-
 ## How it Works
 
 1. **Frontend (React)**: Provides the user interface
@@ -59,10 +51,10 @@ The app communicates with your existing Ollama installation on `localhost:11434`
 
 ## Usage
 
-1. Make sure Ollama is running (it should be, since your Python script worked)
+1. Make sure Ollama is running
 2. Start the app with `npm run tauri dev`
 3. Type your message in the text box
-4. Click "Send to TinyLlama" or press Ctrl+Enter
+4. Click "Generate Tags" or press Ctrl+Enter
 5. View the response below
 
 ## Troubleshooting
@@ -70,5 +62,3 @@ The app communicates with your existing Ollama installation on `localhost:11434`
 - **"Ollama not available"**: Make sure Ollama is running (`ollama serve`)
 - **Build errors**: Ensure Rust is properly installed
 - **Port conflicts**: The app uses port 1420 for development
-
-This replaces your terminal interface with a proper desktop GUI!

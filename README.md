@@ -1,6 +1,8 @@
 # Tag-Sense-AI
 Auto-tag files based on suggested tags using AI.
 
+<img width="1918" height="1078" alt="image" src="https://github.com/user-attachments/assets/5e87c305-ff58-4c1c-84bb-ee78160467e8" />
+
 # Current Approach (WIP)
 1) User Interaction (React + Tauri)
 - User selects files and clicks “Auto Tag My Files.”
