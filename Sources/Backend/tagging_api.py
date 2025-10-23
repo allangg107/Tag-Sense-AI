@@ -24,6 +24,74 @@ def health_check():
         "ollama_connected": ollama_status
     })
 
+@app.route('/api/get-folder-files', methods=['POST'])
+def get_folder_files():
+    """Get list of all supported files in a folder"""
+    data = request.get_json()
+    
+    if not data or 'folder_path' not in data:
+        return jsonify({"error": "folder_path is required"}), 400
+    
+    folder_path = data['folder_path']
+    
+    if not os.path.exists(folder_path):
+        return jsonify({"error": "Folder not found"}), 404
+    
+    if not os.path.isdir(folder_path):
+        return jsonify({"error": "Path is not a directory"}), 400
+    
+    # Log the request for debugging
+    print(f"Getting file list for folder: {folder_path}")
+    
+    try:
+        files = processor.get_supported_files_in_folder(folder_path)
+        print(f"Found {len(files)} supported files in folder")
+        return jsonify({
+            "success": True,
+            "files": files,
+            "count": len(files)
+        })
+    except Exception as e:
+        print(f"Error getting folder files: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"Error getting folder files: {str(e)}",
+            "files": [],
+            "count": 0
+        }), 500
+
+@app.route('/api/process-folder', methods=['POST'])
+def process_folder():
+    """Process all supported files in a folder and return tags for each"""
+    data = request.get_json()
+    
+    if not data or 'folder_path' not in data:
+        return jsonify({"error": "folder_path is required"}), 400
+    
+    folder_path = data['folder_path']
+    
+    if not os.path.exists(folder_path):
+        return jsonify({"error": "Folder not found"}), 404
+    
+    if not os.path.isdir(folder_path):
+        return jsonify({"error": "Path is not a directory"}), 400
+    
+    # Log the request for debugging
+    print(f"Processing folder: {folder_path}")
+    
+    try:
+        result = processor.process_folder(folder_path)
+        print(f"Folder processing result: {result.get('success', False)} - {result.get('summary', {})}")
+        return jsonify(result)
+    except Exception as e:
+        print(f"Error processing folder: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"Internal processing error: {str(e)}",
+            "results": [],
+            "summary": {"total": 0, "processed": 0, "errors": 0}
+        }), 500
+
 @app.route('/api/process-file', methods=['POST'])
 def process_file():
     """Process a single file and return tags"""
@@ -146,10 +214,15 @@ if __name__ == '__main__':
     print("Starting Tag Sense AI Backend...")
     print("Supported file types:", processor.supported_extensions)
     
-    # Warm up models in a separate thread to not block startup
-    import threading
-    warmup_thread = threading.Thread(target=warm_up_models)
-    warmup_thread.daemon = True
-    warmup_thread.start()
+    # Only warm up models in the main reloader process (not in the initial process)
+    import os
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        # Warm up models in a separate thread to not block startup
+        import threading
+        warmup_thread = threading.Thread(target=warm_up_models)
+        warmup_thread.daemon = True
+        warmup_thread.start()
+    else:
+        print("Skipping model warmup in initial process (will warmup after reloader starts)...")
     
     app.run(debug=True, port=5000, threaded=True)

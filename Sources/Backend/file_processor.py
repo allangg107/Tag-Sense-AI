@@ -312,6 +312,119 @@ Tags:"""
             logger.error(f"Error generating tags: {e}")
             return []
     
+    def get_supported_files_in_folder(self, folder_path):
+        """Get list of all supported files in a folder"""
+        supported_files = []
+        
+        try:
+            for filename in os.listdir(folder_path):
+                file_path = os.path.join(folder_path, filename)
+                
+                # Skip directories
+                if os.path.isdir(file_path):
+                    continue
+                
+                # Check if file extension is supported
+                _, ext = os.path.splitext(filename.lower())
+                
+                if ext in self.text_extensions or ext in self.image_extensions:
+                    supported_files.append(file_path)
+            
+            # Sort files for consistent ordering
+            supported_files.sort()
+            return supported_files
+            
+        except Exception as e:
+            raise Exception(f"Error scanning folder: {str(e)}")
+    
+    def process_folder(self, folder_path: str) -> Dict:
+        """Process all supported files in a folder and return results"""
+        import os
+        from pathlib import Path
+        
+        results = []
+        total_files = 0
+        processed_files = 0
+        errors = 0
+        
+        logger.info(f"Starting folder processing: {folder_path}")
+        
+        try:
+            # Get all files in the folder
+            folder = Path(folder_path)
+            if not folder.exists() or not folder.is_dir():
+                return {
+                    "success": False,
+                    "error": "Folder not found or not a directory",
+                    "results": [],
+                    "summary": {"total": 0, "processed": 0, "errors": 0}
+                }
+            
+            # Find all supported files
+            all_files = []
+            for file_path in folder.iterdir():
+                if file_path.is_file():
+                    extension = file_path.suffix.lower()
+                    if extension in self.supported_extensions:
+                        all_files.append(str(file_path))
+            
+            total_files = len(all_files)
+            logger.info(f"Found {total_files} supported files in folder")
+            
+            if total_files == 0:
+                return {
+                    "success": True,
+                    "error": None,
+                    "results": [],
+                    "summary": {"total": 0, "processed": 0, "errors": 0},
+                    "message": "No supported files found in folder"
+                }
+            
+            # Process each file
+            for file_path in all_files:
+                try:
+                    logger.info(f"Processing file {processed_files + 1}/{total_files}: {file_path}")
+                    result = self.process_file(file_path)
+                    results.append(result)
+                    
+                    if result["success"]:
+                        processed_files += 1
+                    else:
+                        errors += 1
+                        
+                except Exception as e:
+                    logger.error(f"Error processing file {file_path}: {e}")
+                    errors += 1
+                    results.append({
+                        "filename": os.path.basename(file_path),
+                        "path": file_path,
+                        "success": False,
+                        "error": f"Processing error: {str(e)}",
+                        "tags": [],
+                        "file_type": "unknown"
+                    })
+            
+            return {
+                "success": True,
+                "error": None,
+                "results": results,
+                "summary": {
+                    "total": total_files,
+                    "processed": processed_files,
+                    "errors": errors
+                },
+                "folder_path": folder_path
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing folder {folder_path}: {e}")
+            return {
+                "success": False,
+                "error": f"Folder processing error: {str(e)}",
+                "results": [],
+                "summary": {"total": 0, "processed": 0, "errors": 0}
+            }
+
     def process_file(self, file_path: str) -> Dict:
         """Process a single file and return results"""
         filename = os.path.basename(file_path)
