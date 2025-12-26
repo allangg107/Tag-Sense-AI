@@ -54,6 +54,10 @@ Cargo.lock
 **/dist/
 **/build/
 
+# Test folder and results
+/TestTagging/
+/test_results.jsonl
+
 # IDE / Editor
 .vscode/
 .idea/

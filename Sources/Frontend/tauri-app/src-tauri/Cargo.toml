@@ -17,9 +17,11 @@ tauri-build = { version = "1.5.0", features = [], default-features = false }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.5.0", features = [ "shell-open", "dialog-open"] }
+tauri = { version = "1.5.0", features = [ "shell-open", "dialog-open", "fs-read-dir", "fs-read-file", "path-all"] }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.11", features = ["json"] }
+notify = "6.1"
+chrono = "0.4"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem and the built-in dev server is disabled.

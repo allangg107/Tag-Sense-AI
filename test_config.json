@@ -1,0 +1,108 @@
+{
+  "test_folder": "TestTagging",
+  "models": [
+    {
+      "id": "tinyllama",
+      "name": "tinyllama",
+      "file_types": ["text"]
+    }
+  ],
+  "prompts": [
+    {
+      "id": "default",
+      "prompt": "Based on this content, generate relevant tags. Return only the tags as a comma-separated list.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.3,
+        "num_predict": 50
+      }
+    },
+    {
+      "id": "detailed",
+      "prompt": "Analyze the following content and generate 5-8 highly relevant tags that describe the key topics, concepts, and themes. Return only comma-separated tags.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.3,
+        "num_predict": 50
+      }
+    },
+    {
+      "id": "keywords",
+      "prompt": "Extract the most important keywords and topics from this text. List them as comma-separated tags.\n\nText: {text}\n\nKeywords:",
+      "options": {
+        "temperature": 0.2,
+        "num_predict": 50
+      }
+    },
+    {
+      "id": "semantic",
+      "prompt": "What is this document about? Identify the document type (resume, invoice, letter, report, etc.) and main themes. Generate 3-7 descriptive tags that capture the essence and purpose of this content, not just words from the text.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.4,
+        "num_predict": 60
+      }
+    },
+    {
+      "id": "contextual",
+      "prompt": "Read this content and generate meaningful tags that describe: 1) what type of document this is, 2) what industry/field it relates to, 3) the main subject matter. Be specific and contextual. Return 4-6 tags.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.35,
+        "num_predict": 55
+      }
+    },
+    {
+      "id": "categorical",
+      "prompt": "Classify this document and generate relevant category tags. Consider: document type (resume, invoice, article, etc.), subject area, purpose, and key concepts. Provide 5 tags.\n\nContent: {text}\n\nCategory tags:",
+      "options": {
+        "temperature": 0.25,
+        "num_predict": 50
+      }
+    },
+    {
+      "id": "intelligent",
+      "prompt": "Intelligently analyze this text. Generate tags that identify: the document category, related organizations/companies mentioned, core topics, and intended purpose. Focus on meaningful descriptors, not random words. 4-7 tags only.\n\nText: {text}\n\nIntelligent tags:",
+      "options": {
+        "temperature": 0.3,
+        "num_predict": 60
+      }
+    },
+    {
+      "id": "question_based",
+      "prompt": "Answer these questions about the content: What type of document is this? What is it about? Who is it for? Then create 5 tags based on your answers.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.35,
+        "num_predict": 55
+      }
+    },
+    {
+      "id": "professional",
+      "prompt": "As a professional document analyst, identify this document's type, domain, and key subjects. Generate 5-7 precise tags that would help someone categorize and find this document later. Avoid generic words.\n\nDocument: {text}\n\nProfessional tags:",
+      "options": {
+        "temperature": 0.3,
+        "num_predict": 60
+      }
+    },
+    {
+      "id": "concise_summary",
+      "prompt": "Summarize this content's purpose and nature in 4-6 tags. Think about: document category, industry, subject matter, and any organizations mentioned. Be concise and relevant.\n\nContent: {text}\n\nSummary tags:",
+      "options": {
+        "temperature": 0.25,
+        "num_predict": 50
+      }
+    },
+    {
+      "id": "metadata",
+      "prompt": "Generate metadata tags for this document. Include: document type, subject classification, industry/field, and core themes. Return 5-7 tags suitable for archival and search.\n\nContent: {text}\n\nMetadata tags:",
+      "options": {
+        "temperature": 0.3,
+        "num_predict": 55
+      }
+    },
+    {
+      "id": "high_temp",
+      "prompt": "What are the most meaningful tags to describe this document's type, purpose, and content? Generate 5 creative but relevant tags.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.6,
+        "num_predict": 50
+      }
+    }
+  ]
+}

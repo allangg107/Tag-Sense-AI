@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import logging
 import base64
+import time
 
 # Text extraction libraries
 import docx  # python-docx for Word docs
@@ -119,8 +120,11 @@ class FileProcessor:
             logger.error(f"Error encoding image {file_path}: {e}")
             return None
     
-    def generate_image_tags(self, file_path: str, filename: str) -> List[str]:
-        """Generate tags for images using Llama 3.2 Vision"""
+    def generate_image_tags(self, file_path: str, filename: str, model: str = "llama3.2-vision:11b",
+                           prompt: str = None, options: Dict = None) -> tuple[List[str], float]:
+        """Generate tags for images using specified vision model and prompt. Returns (tags, processing_time_ms)"""
+        start_time = time.perf_counter()
+        
         try:
             logger.info(f"Starting image tag generation for {filename}")
             
@@ -128,20 +132,26 @@ class FileProcessor:
             image_base64 = self._encode_image_to_base64(file_path)
             if not image_base64:
                 logger.error("Failed to encode image to base64")
-                return []
+                processing_time = (time.perf_counter() - start_time) * 1000
+                return [], processing_time
             
-            # Keep the prompt very simple and strict
-            prompt = "List only 5 tags for this image. Tags only, no sentences. Example: dog, park, running, outdoor, happy"
+            # Use custom prompt if provided, otherwise use default
+            if prompt is None:
+                prompt = "List only 5 tags for this image. Tags only, no sentences. Example: dog, park, running, outdoor, happy"
+            
+            # Use custom options if provided, otherwise use defaults
+            if options is None:
+                options = {
+                    "temperature": 0.0,
+                    "num_predict": 30
+                }
 
             payload = {
-                "model": "llama3.2-vision:11b",
+                "model": model,
                 "prompt": prompt,
                 "images": [image_base64],
                 "stream": False,
-                "options": {
-                    "temperature": 0.0,  # Most deterministic
-                    "num_predict": 30    # Very short response
-                }
+                "options": options
             }
             
             logger.info(f"Sending image request to Ollama")
@@ -161,7 +171,8 @@ class FileProcessor:
                 
                 if not raw_tags:
                     logger.warning("Empty response from vision model")
-                    return []
+                    processing_time = (time.perf_counter() - start_time) * 1000
+                    return [], processing_time
                 
                 # Parse the response - split by commas and newlines, filter out sentences
                 all_text = raw_tags.replace('\n', ', ').replace('.', ',')
@@ -189,15 +200,18 @@ class FileProcessor:
                 clean_tags = [tag for tag in tags if tag not in unwanted]
                 
                 logger.info(f"Final cleaned tags: {clean_tags}")
-                return clean_tags[:6]  # Limit to 6 tags
+                processing_time = (time.perf_counter() - start_time) * 1000
+                return clean_tags[:6], processing_time  # Limit to 6 tags
             else:
                 logger.error(f"Ollama Vision API error: {response.status_code}")
                 logger.error(f"Response text: {response.text}")
-                return []
+                processing_time = (time.perf_counter() - start_time) * 1000
+                return [], processing_time
                 
         except requests.exceptions.Timeout as e:
             logger.error(f"Timeout waiting for Ollama Vision response: {e}")
-            return []
+            processing_time = (time.perf_counter() - start_time) * 1000
+            return [], processing_time
         except requests.exceptions.ConnectionError as e:
             logger.error(f"Connection error with Ollama Vision: {e}")
             return []
@@ -255,28 +269,40 @@ class FileProcessor:
         
         return final_tags[:8]  # Limit to 8 tags max
     
-    def generate_tags(self, text: str, filename: str) -> List[str]:
-        """Generate tags using TinyLlama"""
+    def generate_tags(self, text: str, filename: str, model: str = "tinyllama", 
+                      prompt_template: str = None, options: Dict = None) -> tuple[List[str], float]:
+        """Generate tags using specified model and prompt. Returns (tags, processing_time_ms)"""
+        start_time = time.perf_counter()
+        
         try:
             # Truncate text if too long (TinyLlama has context limits)
             max_chars = 1500
             if len(text) > max_chars:
                 text = text[:max_chars] + "..."
             
-            prompt = f"""Based on this content, generate relevant tags. Return only the tags as a comma-separated list.
+            # Use custom prompt template if provided, otherwise use default
+            if prompt_template is None:
+                prompt = f"""Based on this content, generate relevant tags. Return only the tags as a comma-separated list.
 
 Content: {text}
 
 Tags:"""
-
-            payload = {
-                "model": "tinyllama",
-                "prompt": prompt,
-                "stream": False,
-                "options": {
+            else:
+                # Replace {text} placeholder in template
+                prompt = prompt_template.replace("{text}", text)
+            
+            # Use custom options if provided, otherwise use defaults
+            if options is None:
+                options = {
                     "temperature": 0.3,
                     "num_predict": 50
                 }
+
+            payload = {
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "options": options
             }
             
             logger.info(f"Sending request to Ollama: {self.ollama_url}/api/generate")
@@ -295,22 +321,27 @@ Tags:"""
                 
                 if not raw_tags:
                     logger.warning("Empty response from model")
-                    return []
+                    processing_time = (time.perf_counter() - start_time) * 1000
+                    return [], processing_time
                 
                 # Use the shared tag parsing method
                 final_tags = self._parse_tags_response(raw_tags)
                 logger.info(f"Final cleaned tags: {final_tags}")
-                return final_tags
+                processing_time = (time.perf_counter() - start_time) * 1000
+                return final_tags, processing_time
             else:
                 logger.error(f"Ollama API error: {response.status_code} - {response.text}")
-                return []
+                processing_time = (time.perf_counter() - start_time) * 1000
+                return [], processing_time
                 
         except requests.exceptions.Timeout:
             logger.error("Timeout waiting for Ollama response")
-            return []
+            processing_time = (time.perf_counter() - start_time) * 1000
+            return [], processing_time
         except Exception as e:
             logger.error(f"Error generating tags: {e}")
-            return []
+            processing_time = (time.perf_counter() - start_time) * 1000
+            return [], processing_time
     
     def get_supported_files_in_folder(self, folder_path):
         """Get list of all supported files in a folder"""
@@ -425,8 +456,9 @@ Tags:"""
                 "summary": {"total": 0, "processed": 0, "errors": 0}
             }
 
-    def process_file(self, file_path: str) -> Dict:
-        """Process a single file and return results"""
+    def process_file(self, file_path: str, model: str = None, prompt_template: str = None, 
+                     options: Dict = None) -> Dict:
+        """Process a single file and return results with timing info"""
         filename = os.path.basename(file_path)
         
         # Check if file type is supported
@@ -438,14 +470,20 @@ Tags:"""
                 "success": False,
                 "error": f"Unsupported file type: {extension}",
                 "tags": [],
-                "file_type": "unknown"
+                "file_type": "unknown",
+                "processing_time_ms": 0
             }
         
         # Determine if this is an image or text file
         if self.is_image_file(file_path):
             # Process image file with Vision model
             logger.info(f"Processing image file: {filename}")
-            tags = self.generate_image_tags(file_path, filename)
+            
+            # Use default model if not provided
+            if model is None:
+                model = "llama3.2-vision:11b"
+            
+            tags, processing_time = self.generate_image_tags(file_path, filename, model, prompt_template, options)
             
             if not tags:
                 # Fallback: generate generic image tags based on filename and type
@@ -465,7 +503,9 @@ Tags:"""
                     "error": "Vision model timed out. Generated basic tags from file type.",
                     "tags": generic_tags,
                     "file_type": "image",
-                    "model_used": "fallback"
+                    "model_used": "fallback",
+                    "prompt_used": None,
+                    "processing_time_ms": processing_time
                 }
             
             return {
@@ -475,11 +515,17 @@ Tags:"""
                 "error": None,
                 "tags": tags,
                 "file_type": "image",
-                "model_used": "llama3.2-vision:11b"
+                "model_used": model,
+                "prompt_used": prompt_template,
+                "processing_time_ms": processing_time
             }
         else:
-            # Process text file with TinyLlama
+            # Process text file with TinyLlama or specified model
             logger.info(f"Processing text file: {filename}")
+            
+            # Use default model if not provided
+            if model is None:
+                model = "tinyllama"
             
             # Extract text
             text = self.extract_text(file_path)
@@ -490,13 +536,14 @@ Tags:"""
                     "success": False,
                     "error": "Could not extract text from file",
                     "tags": [],
-                    "file_type": "text"
+                    "file_type": "text",
+                    "processing_time_ms": 0
                 }
             
             logger.info(f"Extracted {len(text)} characters from {filename}")
             
             # Generate tags
-            tags = self.generate_tags(text, filename)
+            tags, processing_time = self.generate_tags(text, filename, model, prompt_template, options)
             
             return {
                 "filename": filename,
@@ -505,7 +552,9 @@ Tags:"""
                 "error": None,
                 "tags": tags,
                 "file_type": "text",
-                "model_used": "tinyllama",
+                "model_used": model,
+                "prompt_used": prompt_template,
+                "processing_time_ms": processing_time,
                 "text_preview": text[:200] + "..." if len(text) > 200 else text
             }
 

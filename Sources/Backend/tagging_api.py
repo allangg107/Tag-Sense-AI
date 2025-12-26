@@ -94,7 +94,7 @@ def process_folder():
 
 @app.route('/api/process-file', methods=['POST'])
 def process_file():
-    """Process a single file and return tags"""
+    """Process a single file and return tags with optional model/prompt override"""
     data = request.get_json()
     
     if not data or 'file_path' not in data:
@@ -105,19 +105,29 @@ def process_file():
     if not os.path.exists(file_path):
         return jsonify({"error": "File not found"}), 404
     
+    # Extract optional parameters
+    model = data.get('model', None)
+    prompt_template = data.get('prompt_template', None)
+    options = data.get('options', None)
+    
     # Log the request for debugging
     print(f"Processing file: {file_path}")
+    if model:
+        print(f"  Using model: {model}")
+    if prompt_template:
+        print(f"  Using custom prompt template")
     
     try:
-        result = processor.process_file(file_path)
-        print(f"Processing result: {result.get('success', False)} - {len(result.get('tags', []))} tags")
+        result = processor.process_file(file_path, model, prompt_template, options)
+        print(f"Processing result: {result.get('success', False)} - {len(result.get('tags', []))} tags - {result.get('processing_time_ms', 0):.2f}ms")
         return jsonify(result)
     except Exception as e:
         print(f"Error processing file: {e}")
         return jsonify({
             "success": False,
             "error": f"Internal processing error: {str(e)}",
-            "tags": []
+            "tags": [],
+            "processing_time_ms": 0
         }), 500
 
 @app.route('/api/process-files', methods=['POST'])
@@ -196,19 +206,9 @@ def warm_up_models():
     except:
         print("! TinyLlama warmup failed")
     
-    try:
-        # Warm up Vision model
-        vision_payload = {
-            "model": "llama3.2-vision:11b",
-            "prompt": "Test",
-            "stream": False,
-            "options": {"temperature": 0.3, "num_predict": 1}
-        }
-        response = requests.post("http://localhost:11434/api/generate", json=vision_payload, timeout=30)
-        if response.status_code == 200:
-            print("✓ Llama 3.2 Vision 11b warmed up")
-    except:
-        print("! Vision model warmup failed (this is normal if it's not installed)")
+    # Skip vision model warmup - it's large and slow to load
+    # Vision model will be loaded on first use instead
+    print("⊘ Skipping Vision model warmup (loads on first use)")
 
 if __name__ == '__main__':
     print("Starting Tag Sense AI Backend...")

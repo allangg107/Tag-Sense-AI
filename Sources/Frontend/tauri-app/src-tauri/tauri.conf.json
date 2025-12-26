@@ -20,6 +20,15 @@
       "dialog": {
         "all": false,
         "open": true
+      },
+      "fs": {
+        "all": false,
+        "scope": ["$APP/../../../../../TestTagging/**"],
+        "readDir": true,
+        "readFile": true
+      },
+      "path": {
+        "all": true
       }
     },
     "bundle": {

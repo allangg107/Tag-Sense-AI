@@ -11,3 +11,6 @@ Pillow>=10.0.0
 # Web API framework
 flask>=2.3.0
 flask-cors>=4.0.0
+
+# File monitoring
+watchdog>=3.0.0
