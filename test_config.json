@@ -5,6 +5,16 @@
       "id": "tinyllama",
       "name": "tinyllama",
       "file_types": ["text"]
+    },
+    {
+      "id": "phi4",
+      "name": "phi4",
+      "file_types": ["text"]
+    },
+    {
+      "id": "gemma2_9b",
+      "name": "gemma2:9b",
+      "file_types": ["text"]
     }
   ],
   "prompts": [

@@ -14,7 +14,8 @@ def health_check():
     try:
         # Test Ollama connection
         import requests
-        response = requests.get("http://localhost:11434/api/tags")
+        # Use a short timeout so we don't block the health check
+        response = requests.get("http://localhost:11434/api/tags", timeout=0.5)
         ollama_status = response.status_code == 200
     except:
         ollama_status = False
@@ -202,13 +203,13 @@ def warm_up_models():
         }
         response = requests.post("http://localhost:11434/api/generate", json=tiny_payload, timeout=10)
         if response.status_code == 200:
-            print("✓ TinyLlama warmed up")
+            print("[OK] TinyLlama warmed up")
     except:
         print("! TinyLlama warmup failed")
     
     # Skip vision model warmup - it's large and slow to load
     # Vision model will be loaded on first use instead
-    print("⊘ Skipping Vision model warmup (loads on first use)")
+    print("[SKIP] Skipping Vision model warmup (loads on first use)")
 
 if __name__ == '__main__':
     print("Starting Tag Sense AI Backend...")

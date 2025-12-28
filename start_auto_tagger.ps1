@@ -13,9 +13,16 @@ if (Test-Path $venvPath) {
     Write-Host "Virtual environment not found. Creating one..." -ForegroundColor Yellow
     python -m venv .venv
     & $venvPath
-    Write-Host "Installing dependencies..." -ForegroundColor Yellow
+}
+
+# Ensure dependencies are installed
+if (Test-Path "Sources\Backend\requirements.txt") {
+    Write-Host "Checking dependencies..." -ForegroundColor Yellow
     pip install -r Sources\Backend\requirements.txt
 }
+
+# Get Python path for later use
+$pythonPath = (Resolve-Path ".venv\Scripts\python.exe").Path
 
 Write-Host ""
 Write-Host "Checking backend status..." -ForegroundColor Yellow
@@ -33,14 +40,14 @@ try {
     Write-Host ""
     
     # Start backend in background job
-    Start-Job -ScriptBlock {
+    $backendJob = Start-Job -ScriptBlock {
         Set-Location (Join-Path $using:PWD "Sources\Backend")
-        python tagging_api.py
-    } | Out-Null
+        & $using:pythonPath tagging_api.py
+    }
     
     # Wait for backend to be ready
     Write-Host "Waiting for backend to start..." -ForegroundColor Yellow
-    $maxAttempts = 10
+    $maxAttempts = 30
     $attempt = 0
     $backendReady = $false
     
@@ -53,11 +60,19 @@ try {
             Write-Host "✓ Backend is ready!" -ForegroundColor Green
         } catch {
             Write-Host "  Attempt $attempt/$maxAttempts..." -ForegroundColor Gray
+            # Check if job failed
+            if ($backendJob.State -eq 'Failed' -or $backendJob.State -eq 'Stopped') {
+                Write-Host "Backend job stopped unexpectedly." -ForegroundColor Red
+                Receive-Job -Job $backendJob
+                break
+            }
         }
     }
     
     if (-not $backendReady) {
         Write-Host "✗ Failed to start backend" -ForegroundColor Red
+        Write-Host "Job Output:" -ForegroundColor Yellow
+        Receive-Job -Job $backendJob
         Write-Host "Please start it manually: python Sources\Backend\tagging_api.py" -ForegroundColor Yellow
         exit 1
     }
@@ -76,4 +91,4 @@ Write-Host ""
 
 # Start auto-tagger
 Set-Location Sources\Backend
-python auto_tagger.py
+& $pythonPath auto_tagger.py

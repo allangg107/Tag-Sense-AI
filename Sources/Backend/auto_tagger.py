@@ -94,7 +94,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
     
     def warmup_model(self, file_path, model_name):
         """Warmup a model with a simple prompt (not logged to results)"""
-        logger.info(f"  ⚙ Warming up model: {model_name}")
+        logger.info(f"  [..] Warming up model: {model_name}")
         
         warmup_prompt = "Tag: {text}\n\nTag:"
         payload = {
@@ -111,11 +111,11 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 timeout=120
             )
             if response.status_code == 200:
-                logger.info(f"  ✓ Model warmed up")
+                logger.info(f"  [OK] Model warmed up")
             else:
-                logger.warning(f"  ⚠ Warmup returned HTTP {response.status_code}")
+                logger.warning(f"  [WARN] Warmup returned HTTP {response.status_code}")
         except Exception as e:
-            logger.warning(f"  ⚠ Warmup failed: {e}")
+            logger.warning(f"  [WARN] Warmup failed: {e}")
     
     def process_file_with_combo(self, file_path, combo, run_number):
         """Process a file with a specific model+prompt combination"""
@@ -155,15 +155,15 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 }
                 
                 if result['error'] is None:
-                    logger.info(f"    ✓ Success: {len(result['tags'])} tags in {result['processing_time_ms']:.2f}ms")
+                    logger.info(f"    [OK] Success: {len(result['tags'])} tags in {result['processing_time_ms']:.2f}ms")
                     logger.info(f"    Tags: {result['tags']}")
                 else:
-                    logger.warning(f"    ✗ Failed: {result['error']}")
+                    logger.warning(f"    [FAIL] Failed: {result['error']}")
                 
                 self.write_result(result)
                 
             else:
-                logger.error(f"    ✗ Backend error: HTTP {response.status_code}")
+                logger.error(f"    [FAIL] Backend error: HTTP {response.status_code}")
                 result = {
                     "timestamp": datetime.utcnow().isoformat() + 'Z',
                     "file_path": str(file_path),
@@ -179,7 +179,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 
         except requests.exceptions.Timeout:
             elapsed_ms = (time.time() - start_time) * 1000
-            logger.error(f"    ✗ Request timeout")
+            logger.error(f"    [FAIL] Request timeout")
             result = {
                 "timestamp": datetime.utcnow().isoformat() + 'Z',
                 "file_path": str(file_path),
@@ -195,7 +195,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
             
         except Exception as e:
             elapsed_ms = (time.time() - start_time) * 1000
-            logger.error(f"    ✗ Error: {e}")
+            logger.error(f"    [FAIL] Error: {e}")
             result = {
                 "timestamp": datetime.utcnow().isoformat() + 'Z',
                 "file_path": str(file_path),
@@ -249,7 +249,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 logger.info(f"\n[{run_count}/{total_runs}] Run {run_number}")
                 self.process_file_with_combo(file_path, combo, run_number)
         
-        logger.info(f"\n✓ Completed processing: {file_path}\n")
+        logger.info(f"\n[OK] Completed processing: {file_path}\n")
     
     def on_created(self, event):
         """Handle file creation events"""
@@ -259,7 +259,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
         file_path = event.src_path
         
         if self.is_supported_file(file_path) and self.should_process(file_path):
-            logger.info(f"\n→ New file detected: {file_path}")
+            logger.info(f"\n-> New file detected: {file_path}")
             # Small delay to ensure file is fully written
             time.sleep(0.5)
             self.process_file(file_path)
@@ -272,7 +272,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
         file_path = event.src_path
         
         if self.is_supported_file(file_path) and self.should_process(file_path):
-            logger.info(f"\n→ Modified file detected: {file_path}")
+            logger.info(f"\n-> Modified file detected: {file_path}")
             # Small delay to ensure file is fully written
             time.sleep(0.5)
             self.process_file(file_path)
