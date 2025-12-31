@@ -32,6 +32,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
         self.results_path = results_path
         self.backend_url = backend_url
         self.processed_files = {}  # file_path -> modified_time
+        self.interrupted = False  # Flag for graceful shutdown
         
         logger.info(f"Loaded {len(self.config['combinations'])} model+prompt combinations")
         logger.info(f"Monitoring folder: {self.config['test_folder']}")
@@ -41,15 +42,21 @@ class AutoTaggerHandler(FileSystemEventHandler):
         with open(config_path, 'r') as f:
             config = json.load(f)
         
+        # Get tag list for substitution
+        tag_list = config.get('tag_list', '')
+        
         # Generate all model+prompt combinations
         combinations = []
         for model in config['models']:
             for prompt in config['prompts']:
+                # Replace {tag_list} placeholder in prompt
+                prompt_text = prompt['prompt'].replace('{tag_list}', tag_list)
+                
                 combo = {
                     'id': f"{model['id']}_{prompt['id']}",
                     'model': model['name'],
                     'file_types': model['file_types'],
-                    'prompt': prompt['prompt'],
+                    'prompt': prompt_text,
                     'options': prompt['options']
                 }
                 combinations.append(combo)
@@ -111,11 +118,26 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 timeout=120
             )
             if response.status_code == 200:
+                data = response.json()
+                # Check if there was an actual error (Ollama not running, model not found, etc.)
+                if data.get('error'):
+                    logger.error(f"  [ERROR] Warmup failed: {data['error']}")
+                    logger.error(f"  Is Ollama running? Is model '{model_name}' installed?")
+                    raise RuntimeError(f"Warmup failed for {model_name}: {data['error']}")
+                # Also check if we got empty tags - likely means Ollama connection failed
+                if not data.get('tags') or len(data.get('tags', [])) == 0:
+                    logger.error(f"  [ERROR] Warmup returned no tags - Ollama may not be running")
+                    logger.error(f"  Please ensure:")
+                    logger.error(f"    1. Ollama is running (check with: ollama list)")
+                    logger.error(f"    2. Model '{model_name}' is installed")
+                    raise RuntimeError(f"Warmup failed for {model_name}: No tags generated (Ollama not responding?)")
                 logger.info(f"  [OK] Model warmed up")
             else:
-                logger.warning(f"  [WARN] Warmup returned HTTP {response.status_code}")
-        except Exception as e:
-            logger.warning(f"  [WARN] Warmup failed: {e}")
+                logger.error(f"  [ERROR] Warmup returned HTTP {response.status_code}")
+                raise RuntimeError(f"Warmup failed with HTTP {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"  [ERROR] Warmup failed: {e}")
+            raise RuntimeError(f"Cannot connect to backend during warmup: {e}")
     
     def process_file_with_combo(self, file_path, combo, run_number):
         """Process a file with a specific model+prompt combination"""
@@ -245,6 +267,9 @@ class AutoTaggerHandler(FileSystemEventHandler):
         # Process with each combination sequentially, twice
         for combo in applicable_combos:
             for run_number in [1, 2]:
+                if self.interrupted:
+                    logger.info("\n[INTERRUPTED] Stopping processing due to interrupt signal")
+                    return
                 run_count += 1
                 logger.info(f"\n[{run_count}/{total_runs}] Run {run_number}")
                 self.process_file_with_combo(file_path, combo, run_number)
@@ -326,8 +351,12 @@ def main():
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        logger.info("\nStopping auto-tagger...")
+        logger.info("\n[INTERRUPT] Ctrl+C detected - stopping immediately...")
+        event_handler.interrupted = True
         observer.stop()
+        observer.join()
+        logger.info("Auto-tagger stopped")
+        return
     
     observer.join()
     logger.info("Auto-tagger stopped")

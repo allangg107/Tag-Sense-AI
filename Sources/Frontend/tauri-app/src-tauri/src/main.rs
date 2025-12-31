@@ -247,6 +247,7 @@ async fn process_file_for_tags(file_path: String, context: Option<String>) -> Re
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct TestConfig {
     test_folder: String,
+    tag_list: Option<String>,
     models: Vec<Model>,
     prompts: Vec<Prompt>,
 }
@@ -422,6 +423,7 @@ async fn process_file_with_all_combos(
     };
     
     // Generate all model+prompt combinations
+    let tag_list = config.tag_list.as_deref().unwrap_or("");
     let mut combinations = Vec::new();
     for model in &config.models {
         // Only include models that support this file type
@@ -430,11 +432,14 @@ async fn process_file_with_all_combos(
         }
         
         for prompt in &config.prompts {
+            // Replace {tag_list} placeholder in prompt
+            let prompt_text = prompt.prompt.replace("{tag_list}", tag_list);
+            
             combinations.push(ModelPromptCombo {
                 id: format!("{}_{}", model.id, prompt.id),
                 model: model.name.clone(),
                 file_types: model.file_types.clone(),
-                prompt: prompt.prompt.clone(),
+                prompt: prompt_text,
                 options: prompt.options.clone(),
             });
         }
