@@ -7,6 +7,7 @@ import json
 import os
 import time
 import requests
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from watchdog.observers import Observer
@@ -43,14 +44,26 @@ class AutoTaggerHandler(FileSystemEventHandler):
             config = json.load(f)
         
         # Get tag list for substitution
-        tag_list = config.get('tag_list', '')
+        tag_list_raw = config.get('tag_list', [])
         
+        # Handle both string (legacy) and list formats
+        if isinstance(tag_list_raw, list):
+            # Join with commas for default substitution
+            tag_list_str = ", ".join(tag_list_raw)
+            # Create a bulleted version for potential future use
+            tag_list_bullets = "\n- " + "\n- ".join(tag_list_raw)
+        else:
+            tag_list_str = str(tag_list_raw)
+            tag_list_bullets = tag_list_str  # Fallback
+            
         # Generate all model+prompt combinations
         combinations = []
         for model in config['models']:
             for prompt in config['prompts']:
                 # Replace {tag_list} placeholder in prompt
-                prompt_text = prompt['prompt'].replace('{tag_list}', tag_list)
+                # We can also support {tag_list_bullets} if we want to test that format
+                prompt_text = prompt['prompt'].replace('{tag_list}', tag_list_str)
+                prompt_text = prompt_text.replace('{tag_list_bullets}', tag_list_bullets)
                 
                 combo = {
                     'id': f"{model['id']}_{prompt['id']}",
@@ -103,12 +116,13 @@ class AutoTaggerHandler(FileSystemEventHandler):
         """Warmup a model with a simple prompt (not logged to results)"""
         logger.info(f"  [..] Warming up model: {model_name}")
         
-        warmup_prompt = "Tag: {text}\n\nTag:"
+        # Simple warmup prompt
+        warmup_prompt = "Hello"
         payload = {
             "file_path": str(file_path),
             "model": model_name,
             "prompt_template": warmup_prompt,
-            "options": {"temperature": 0.0, "num_predict": 5}
+            "options": {"temperature": 0.1, "num_predict": 10}
         }
         
         try:
@@ -124,14 +138,16 @@ class AutoTaggerHandler(FileSystemEventHandler):
                     logger.error(f"  [ERROR] Warmup failed: {data['error']}")
                     logger.error(f"  Is Ollama running? Is model '{model_name}' installed?")
                     raise RuntimeError(f"Warmup failed for {model_name}: {data['error']}")
-                # Also check if we got empty tags - likely means Ollama connection failed
+                
+                # Check for empty tags, but be more lenient - if we got a success response but no tags,
+                # it might just be the model being stubborn on the warmup prompt.
+                # We'll log a warning but proceed, as the real prompts might work better.
                 if not data.get('tags') or len(data.get('tags', [])) == 0:
-                    logger.error(f"  [ERROR] Warmup returned no tags - Ollama may not be running")
-                    logger.error(f"  Please ensure:")
-                    logger.error(f"    1. Ollama is running (check with: ollama list)")
-                    logger.error(f"    2. Model '{model_name}' is installed")
-                    raise RuntimeError(f"Warmup failed for {model_name}: No tags generated (Ollama not responding?)")
-                logger.info(f"  [OK] Model warmed up")
+                    logger.warning(f"  [WARN] Warmup returned no tags for {model_name}")
+                    logger.warning(f"  This might be due to the model not following the warmup prompt.")
+                    logger.warning(f"  Proceeding with testing anyway...")
+                else:
+                    logger.info(f"  [OK] Model warmed up (generated: {data['tags']})")
             else:
                 logger.error(f"  [ERROR] Warmup returned HTTP {response.status_code}")
                 raise RuntimeError(f"Warmup failed with HTTP {response.status_code}")
@@ -303,6 +319,73 @@ class AutoTaggerHandler(FileSystemEventHandler):
             self.process_file(file_path)
 
 
+def check_and_start_ollama():
+    """Check if Ollama is running and start it if not"""
+    try:
+        # Check if running using tasklist on Windows
+        if os.name == 'nt':
+            # Use tasklist to check for ollama.exe or ollama app.exe
+            output = subprocess.check_output('tasklist', shell=True).decode('utf-8', errors='ignore')
+            if 'ollama.exe' in output.lower() or 'ollama app.exe' in output.lower():
+                logger.info("✓ Ollama process found running")
+                return True
+        
+        logger.warning("Ollama process not found. Attempting to start...")
+        
+        # 1. Try to start 'ollama serve' (CLI) first as it's easier to hide
+        try:
+            logger.info("Attempting to start 'ollama serve'...")
+            if os.name == 'nt':
+                # Configure startup info to hide window
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+                
+                # CREATE_NO_WINDOW = 0x08000000
+                subprocess.Popen(['ollama', 'serve'], 
+                               creationflags=0x08000000,
+                               startupinfo=startupinfo)
+            else:
+                subprocess.Popen(['ollama', 'serve'], 
+                               stdout=subprocess.DEVNULL, 
+                               stderr=subprocess.DEVNULL)
+                
+            logger.info("Waiting for Ollama to start...")
+            time.sleep(5)
+            return True
+        except FileNotFoundError:
+            logger.warning("'ollama' command not found in PATH.")
+        except Exception as e:
+            logger.warning(f"Failed to start 'ollama serve': {e}")
+
+        # 2. Fallback: Try to start the Windows GUI App (System Tray version)
+        if os.name == 'nt':
+            # Standard installation path for Ollama on Windows
+            app_path = os.path.expanduser(r"~\AppData\Local\Programs\Ollama\ollama app.exe")
+            
+            if os.path.exists(app_path):
+                logger.info(f"Launching Ollama App...")
+                
+                # Configure startup info to hide window
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE  # 0 = Hide
+                
+                # Launch with hidden window
+                subprocess.Popen([app_path], close_fds=True, startupinfo=startupinfo)
+                
+                logger.info("Waiting for Ollama to start...")
+                time.sleep(5)
+                return True
+
+        logger.error("Could not start Ollama. Please start it manually.")
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error checking/starting Ollama: {e}")
+        # Don't return False here, as we might still be able to connect if the check failed but it's running
+        return False
+
 def main():
     """Main function"""
     # Get project root (assuming we're in Sources/Backend/)
@@ -321,6 +404,9 @@ def main():
     if not test_folder.exists():
         logger.error(f"Test folder not found: {test_folder}")
         return
+    
+    # Check and start Ollama if needed
+    check_and_start_ollama()
     
     # Check backend connection
     try:

@@ -1,12 +1,37 @@
 {
   "test_folder": "TestTagging",
-  "tag_list": "Invoice, Receipt, Contract, Resume, Cover Letter, Report, Memo, Presentation, Spreadsheet, Code, Configuration, Log, Manual, Article, Note, Email, Schedule, Budget, Proposal, Agreement, Statement, Form, ID, Certificate, Ticket, Map, Diagram, Photo, Screenshot, Personal, Work, Finance, Legal, Medical, Education, Travel, Shopping, Project, Meeting, Research, Marketing, Sales, HR, Admin, Security, Urgent, Draft, Final, Review, Template, Archived",
+  "benchmarks": {
+    "test_medium.txt": [
+      "email",
+      "finance",
+      "education",
+      "statement",
+      "legal",
+      "report"
+    ],
+    "test_long.txt": [
+      "agreement",
+      "contract",
+      "legal",
+      "finance"
+    ],
+    "test_medium_2.txt": [
+      "email",
+      "work",
+      "resume"
+    ],
+    "test_short.txt": [
+      "note"
+    ]
+  },
+  "tag_list": [
+    "personal", "work", "school", "family", "home", "health", "finance", 
+    "tax", "receipt", "invoice", "bank", "legal", "medical", "travel", 
+    "recipe", "book", "movie", "music", "gaming", "sport", "project", 
+    "note", "journal", "resume", "contract", "certificate", 
+    "photo", "video", "screenshot", "code", "notes", "email"
+  ],
   "models": [
-    {
-      "id": "tinyllama",
-      "name": "tinyllama",
-      "file_types": ["text"]
-    },
     {
       "id": "phi4",
       "name": "phi4",
@@ -16,47 +41,53 @@
       "id": "gemma2_9b",
       "name": "gemma2:9b",
       "file_types": ["text"]
+    },
+    {
+      "id": "gemma3_12b",
+      "name": "gemma3:12b",
+      "file_types": ["text"]
     }
   ],
   "prompts": [
     {
-      "id": "constrained_default",
-      "prompt": "Select 3-7 relevant tags for this text ONLY from the following list: {tag_list}. Return them as a comma-separated list.\n\nContent: {text}\n\nTags:",
+      "id": "allan_custom",
+      "prompt": "You will categorize content using tags. You MUST ONLY choose tags from this list: \n{tag_list}. \n\nDo NOT create any new tags. Return the tags as a comma-separated list.\n\nHere is the content to categorize: \n\n{text}",
       "options": {
-        "temperature": 0.3,
+        "temperature": 0.05,
         "num_predict": 50
       }
     },
     {
-      "id": "constrained_strict",
-      "prompt": "You are a strict classification system. You must ONLY use tags from this allowed list: {tag_list}. Analyze the content and output the matching tags as a comma-separated list.\n\nContent: {text}\n\nTags:",
+      "id": "strict_basic",
+      "prompt": "Select the most appropriate tags for the following content. You must ONLY choose from this list: {tag_list}. Do not create any new tags. Return the tags as a comma-separated list.\n\nContent: {text}\n\nTags:",
       "options": {
         "temperature": 0.1,
         "num_predict": 50
       }
     },
     {
-      "id": "constrained_type_topic",
-      "prompt": "Analyze this document. First select a Document Type tag from the list, then select Topic tags. Use ONLY tags from this list: {tag_list}.\n\nContent: {text}\n\nTags:",
+      "id": "strict_negative",
+      "prompt": "Classify the text using ONLY the tags provided below.\n\nALLOWED TAGS: {tag_list}\n\nNEGATIVE CONSTRAINTS:\n- Do NOT use any tags not in the list.\n- Do NOT explain your reasoning.\n- Do NOT output full sentences.\n\nContent: {text}\n\nTags:",
       "options": {
-        "temperature": 0.2,
-        "num_predict": 60
-      }
-    },
-    {
-      "id": "constrained_best_fit",
-      "prompt": "Which of these tags best describe the content? List: {tag_list}. Pick the top 5 most accurate tags.\n\nContent: {text}\n\nTags:",
-      "options": {
-        "temperature": 0.25,
+        "temperature": 0.0,
         "num_predict": 50
       }
     },
     {
-      "id": "constrained_creative",
-      "prompt": "From the following list, choose the tags that capture the essence of this document. You may be slightly flexible if the exact match isn't there, but prefer these tags: {tag_list}.\n\nContent: {text}\n\nTags:",
+      "id": "strict_json",
+      "prompt": "Analyze the content and return a JSON array of strings containing the relevant tags. \n\nValid Tags: {tag_list}\n\nExample Output: [\"Invoice\", \"Finance\"]\n\nContent: {text}\n\nJSON Output:",
       "options": {
-        "temperature": 0.5,
-        "num_predict": 60
+        "temperature": 0.1,
+        "num_predict": 60,
+        "format": "json"
+      }
+    },
+    {
+      "id": "strict_auditor",
+      "prompt": "You are a strict Data Auditor. Your job is to categorize documents using a fixed taxonomy. \n\nTaxonomy: {tag_list}\n\nInstructions:\n1. Read the content.\n2. Select 1-5 tags from the Taxonomy that best fit.\n3. Output ONLY the selected tags, separated by commas.\n\nContent: {text}\n\nTags:",
+      "options": {
+        "temperature": 0.05,
+        "num_predict": 50
       }
     }
   ]

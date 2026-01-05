@@ -249,12 +249,12 @@ class FileProcessor:
         prompt_words = {'tags', 'content', 'file', 'comma-separated', 'analyze', 'suggest', 'relevant', 'based', 'generate', 'return', 'list', 'image', 'visible', 'focus'}
         
         for tag in all_tags:
-            # Remove quotes, periods, and clean up
-            tag = tag.strip('."\'').lower()
+            # Remove quotes, periods, backticks, and clean up
+            tag = tag.strip('."\'`').lower()
             tag = tag.strip()
             
             # Skip pure numbers, very short/long tags, or prompt-related words
-            if (tag and len(tag) > 1 and len(tag) < 30 and 
+            if (tag and len(tag) > 1 and len(tag) < 40 and 
                 not tag.isdigit() and 
                 tag not in prompt_words):
                 cleaned_tags.append(tag)
@@ -269,16 +269,29 @@ class FileProcessor:
         
         return final_tags[:8]  # Limit to 8 tags max
     
+    def _prepare_text_for_model(self, text: str, max_chars: int = 4000) -> str:
+        """
+        Truncates text to fit within model context windows.
+        Keeps the start and end of the document, which usually contain
+        the most relevant tagging info (headers, titles, signatures, summaries).
+        """
+        if len(text) <= max_chars:
+            return text
+        
+        # Keep the first half and last half of the allowed limit
+        half_limit = int(max_chars / 2)
+        return f"{text[:half_limit]}\n\n... [Middle content omitted for processing] ...\n\n{text[-half_limit:]}"
+
     def generate_tags(self, text: str, filename: str, model: str = "tinyllama", 
                       prompt_template: str = None, options: Dict = None) -> tuple[List[str], float]:
         """Generate tags using specified model and prompt. Returns (tags, processing_time_ms)"""
         start_time = time.perf_counter()
         
         try:
-            # Truncate text if too long (TinyLlama has context limits)
-            max_chars = 1500
-            if len(text) > max_chars:
-                text = text[:max_chars] + "..."
+            # Prepare text using Head + Tail strategy
+            # Adjust limit based on model if needed
+            max_chars = 8000
+            text = self._prepare_text_for_model(text, max_chars)
             
             # Use custom prompt template if provided, otherwise use default
             if prompt_template is None:
