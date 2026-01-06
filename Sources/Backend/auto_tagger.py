@@ -37,7 +37,18 @@ class AutoTaggerHandler(FileSystemEventHandler):
         
         logger.info(f"Loaded {len(self.config['combinations'])} model+prompt combinations")
         logger.info(f"Monitoring folder: {self.config['test_folder']}")
+        
+        # Warmup all models at startup
+        self.warmup_all_models()
     
+    def warmup_all_models(self):
+        """Warmup all configured models"""
+        unique_models = set(m['name'] for m in self.config['models'])
+        logger.info(f"\n--- Warmup Phase: {len(unique_models)} model(s) ---")
+        for model_name in unique_models:
+            self.warmup_model(model_name)
+        logger.info("--- Warmup Complete ---\n")
+
     def load_config(self, config_path):
         """Load test configuration and generate model+prompt combinations"""
         with open(config_path, 'r') as f:
@@ -112,14 +123,17 @@ class AutoTaggerHandler(FileSystemEventHandler):
         with open(self.results_path, 'a') as f:
             f.write(json.dumps(result) + '\n')
     
-    def warmup_model(self, file_path, model_name):
+    def warmup_model(self, model_name):
         """Warmup a model with a simple prompt (not logged to results)"""
         logger.info(f"  [..] Warming up model: {model_name}")
+        
+        # Use this script file itself as a dummy file for warmup which is guaranteed to exist
+        dummy_file_path = __file__
         
         # Simple warmup prompt
         warmup_prompt = "Hello"
         payload = {
-            "file_path": str(file_path),
+            "file_path": str(dummy_file_path),
             "model": model_name,
             "prompt_template": warmup_prompt,
             "options": {"temperature": 0.1, "num_predict": 10}
@@ -266,14 +280,6 @@ class AutoTaggerHandler(FileSystemEventHandler):
         ]
         
         logger.info(f"Found {len(applicable_combos)} applicable combinations for {file_type} file")
-        
-        # Warmup phase: run each unique model once with a dud prompt
-        unique_models = list(set(combo['model'] for combo in applicable_combos))
-        if unique_models:
-            logger.info(f"\n--- Warmup Phase: {len(unique_models)} model(s) ---")
-            for model in unique_models:
-                self.warmup_model(file_path, model)
-            logger.info("--- Warmup Complete ---\n")
         
         logger.info(f"Running each combination 2 times for consistency testing")
         
