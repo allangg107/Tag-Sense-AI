@@ -74,15 +74,6 @@
       }
     },
     {
-      "id": "strict_json",
-      "prompt": "Analyze the content and return a JSON array of strings containing the relevant tags. \n\nValid Tags: {tag_list}\n\nExample Output: [\"Invoice\", \"Finance\"]\n\nContent: {text}\n\nJSON Output:",
-      "options": {
-        "temperature": 0.1,
-        "num_predict": 60,
-        "format": "json"
-      }
-    },
-    {
       "id": "strict_auditor",
       "prompt": "You are a strict Data Auditor. Your job is to categorize documents using a fixed taxonomy. \n\nTaxonomy: {tag_list}\n\nInstructions:\n1. Read the content.\n2. Select 1-5 tags from the Taxonomy that best fit.\n3. Output ONLY the selected tags, separated by commas.\n\nContent: {text}\n\nTags:",
       "options": {
