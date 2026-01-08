@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 
 # Supported file extensions
 SUPPORTED_EXTENSIONS = {
-    'text': {'.txt', '.md', '.py', '.js', '.html', '.css', '.json', '.xml', '.docx', '.pdf'},
-    'image': {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.tif'}
+    'text': {'.txt', '.docx', '.pdf'},
+    'image': {'.jpg', '.jpeg', '.png'}
 }
 
 class AutoTaggerHandler(FileSystemEventHandler):
