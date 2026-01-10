@@ -54,39 +54,51 @@ class AutoTaggerHandler(FileSystemEventHandler):
         with open(config_path, 'r') as f:
             config = json.load(f)
         
-        # Get tag list for substitution
-        tag_list_raw = config.get('tag_list', [])
+        # Parse tags
+        tags_config = config.get('tags', {}) 
         
-        # Handle both string (legacy) and list formats
-        if isinstance(tag_list_raw, list):
-            # Join with commas for default substitution
-            tag_list_str = ", ".join(tag_list_raw)
-            # Create a bulleted version for potential future use
-            tag_list_bullets = "\n- " + "\n- ".join(tag_list_raw)
-        else:
-            tag_list_str = str(tag_list_raw)
-            tag_list_bullets = tag_list_str  # Fallback
-            
+        # Prepare tag strings
+        tag_strings = {}
+        for k, v in tags_config.items():
+            if isinstance(v, list):
+                tag_strings[k] = ", ".join(v)
+            else:
+                tag_strings[k] = str(v)
+
+        # Parse prompts
+        prompts_config = config.get('prompts', {})
+
         # Generate all model+prompt combinations
         combinations = []
         for model in config['models']:
-            for prompt in config['prompts']:
-                # Replace {tag_list} placeholder in prompt
-                # We can also support {tag_list_bullets} if we want to test that format
-                prompt_text = prompt['prompt'].replace('{tag_list}', tag_list_str)
-                prompt_text = prompt_text.replace('{tag_list_bullets}', tag_list_bullets)
+            for file_type in model['file_types']:
+                # Skip if no prompts for this file type or tags not defined (optional)
+                if file_type not in prompts_config:
+                    continue
                 
-                combo = {
-                    'id': f"{model['id']}_{prompt['id']}",
-                    'model': model['name'],
-                    'file_types': model['file_types'],
-                    'prompt': prompt_text,
-                    'options': prompt['options']
-                }
-                combinations.append(combo)
+                type_prompts = prompts_config[file_type]
+                # Default to empty string if no tags for this type
+                tag_str = tag_strings.get(file_type, "")
+                
+                for prompt in type_prompts:
+                    # Replace {tag_list} placeholder in prompt
+                    prompt_text = prompt['prompt'].replace('{tag_list}', tag_str)
+                    
+                    # Create bulleted list version if needed
+                    tag_list_bullets = "\n- " + "\n- ".join(tags_config.get(file_type, []))
+                    prompt_text = prompt_text.replace('{tag_list_bullets}', tag_list_bullets)
+
+                    combo = {
+                        'id': f"{model['id']}_{file_type}_{prompt['id']}",
+                        'model': model['name'],
+                        'file_types': [file_type], # Specific to this combo
+                        'prompt': prompt_text,
+                        'options': prompt['options']
+                    }
+                    combinations.append(combo)
         
         config['combinations'] = combinations
-        logger.info(f"Generated {len(combinations)} combinations from {len(config['models'])} models × {len(config['prompts'])} prompts")
+        logger.info(f"Generated {len(combinations)} combinations from {len(config['models'])} models")
         
         return config
     
