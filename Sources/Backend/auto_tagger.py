@@ -242,7 +242,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
         if self.is_supported_file(file_path) and self.should_process(file_path):
             logger.info(f"\n-> New file detected: {file_path}")
             # Small delay to ensure file is fully written
-            time.sleep(0.5)
+            time.sleep(1.5)
             self.process_file(file_path)
     
     def on_modified(self, event):
@@ -255,7 +255,7 @@ class AutoTaggerHandler(FileSystemEventHandler):
         if self.is_supported_file(file_path) and self.should_process(file_path):
             logger.info(f"\n-> Modified file detected: {file_path}")
             # Small delay to ensure file is fully written
-            time.sleep(0.5)
+            time.sleep(2.0)
             self.process_file(file_path)
 
 

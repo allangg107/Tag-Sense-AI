@@ -21,7 +21,7 @@ if (Test-Path ".venv\Scripts\Activate.ps1") {
         Write-Host "📦 Checking Python dependencies..." -ForegroundColor Blue
         
         # Check if Flask is installed (key dependency)
-        $flaskCheck = & python -c "import flask; print('Flask installed')" 2>$null
+        $null = & python -c "import flask; print('Flask installed')" 2>$null
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Installing missing Python dependencies..." -ForegroundColor Yellow
             pip install -r Sources\Backend\requirements.txt
