@@ -21,7 +21,7 @@ $pythonPath = (Resolve-Path ".venv\Scripts\python.exe").Path
 # Ensure dependencies are installed
 if (Test-Path "Sources\Backend\requirements.txt") {
     Write-Host "Checking dependencies..." -ForegroundColor Yellow
-    & $pythonPath -m pip install -r Sources\Backend\requirements.txt
+    & $pythonPath -m pip install -r Sources\Backend\requirements.txt | Out-Null
 }
 
 Write-Host ""
@@ -29,7 +29,7 @@ Write-Host "Checking backend status..." -ForegroundColor Yellow
 
 # Check if backend is already running
 try {
-    $response = Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/health" -TimeoutSec 2 -ErrorAction Stop
+    $null = Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/health" -TimeoutSec 2 -ErrorAction Stop
     Write-Host "✓ Backend is already running" -ForegroundColor Green
 } catch {
     Write-Host "Backend not running. Starting it now..." -ForegroundColor Yellow
@@ -55,7 +55,7 @@ try {
         Start-Sleep -Seconds 1
         $attempt++
         try {
-            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/health" -TimeoutSec 10 -ErrorAction Stop
+            $null = Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/health" -TimeoutSec 10 -ErrorAction Stop
             $backendReady = $true
             Write-Host "✓ Backend is ready!" -ForegroundColor Green
         } catch {
@@ -94,7 +94,7 @@ try {
 Write-Host ""
 Write-Host "=" -NoNewline -ForegroundColor Cyan
 Write-Host ("=" * 58) -ForegroundColor Cyan
-Write-Host " Starting Auto-Tagger " -ForegroundColor White -BackgroundColor DarkCyan
+Write-Host " Starting Auto-Tagger " -ForegroundColor White
 Write-Host "=" -NoNewline -ForegroundColor Cyan
 Write-Host ("=" * 58) -ForegroundColor Cyan
 Write-Host ""
