@@ -37,62 +37,30 @@ class AutoTaggerHandler(FileSystemEventHandler):
         
         logger.info(f"Loaded {len(self.config['combinations'])} model+prompt combinations")
         logger.info(f"Monitoring folder: {self.config['test_folder']}")
-        
-        # Warmup all models at startup
-        self.warmup_all_models()
-    
-    def warmup_all_models(self):
-        """Warmup all configured models"""
-        unique_models = set(m['name'] for m in self.config['models'])
-        logger.info(f"\n--- Warmup Phase: {len(unique_models)} model(s) ---")
-        for model_name in unique_models:
-            self.warmup_model(model_name)
-        logger.info("--- Warmup Complete ---\n")
 
     def load_config(self, config_path):
-        """Load test configuration and generate model+prompt combinations"""
+        """
+        Load test configuration and generate model+prompt combinations.
+        The prompt templates are NOT formatted here; the API is responsible
+        for injecting the correct tag lists.
+        """
         with open(config_path, 'r') as f:
             config = json.load(f)
-        
-        # Parse tags
-        tags_config = config.get('tags', {}) 
-        
-        # Prepare tag strings
-        tag_strings = {}
-        for k, v in tags_config.items():
-            if isinstance(v, list):
-                tag_strings[k] = ", ".join(v)
-            else:
-                tag_strings[k] = str(v)
 
-        # Parse prompts
-        prompts_config = config.get('prompts', {})
-
-        # Generate all model+prompt combinations
         combinations = []
         for model in config['models']:
             for file_type in model['file_types']:
-                # Skip if no prompts for this file type or tags not defined (optional)
-                if file_type not in prompts_config:
-                    continue
-                
-                type_prompts = prompts_config[file_type]
-                # Default to empty string if no tags for this type
-                tag_str = tag_strings.get(file_type, "")
+                # Get the prompts for this file type (e.g., 'text' or 'image')
+                type_prompts = config.get('prompts', {}).get(file_type, [])
                 
                 for prompt in type_prompts:
-                    # Replace {tag_list} placeholder in prompt
-                    prompt_text = prompt['prompt'].replace('{tag_list}', tag_str)
-                    
-                    # Create bulleted list version if needed
-                    tag_list_bullets = "\n- " + "\n- ".join(tags_config.get(file_type, []))
-                    prompt_text = prompt_text.replace('{tag_list_bullets}', tag_list_bullets)
-
                     combo = {
                         'id': f"{model['id']}_{file_type}_{prompt['id']}",
                         'model': model['name'],
-                        'file_types': [file_type], # Specific to this combo
-                        'prompt': prompt_text,
+                        # This combo is for a specific file type
+                        'file_types': [file_type], 
+                        # Pass the raw prompt template to the API
+                        'prompt': prompt['prompt'], 
                         'options': prompt['options']
                     }
                     combinations.append(combo)
@@ -134,52 +102,6 @@ class AutoTaggerHandler(FileSystemEventHandler):
         """Append result to JSON-lines file"""
         with open(self.results_path, 'a') as f:
             f.write(json.dumps(result) + '\n')
-    
-    def warmup_model(self, model_name):
-        """Warmup a model with a simple prompt (not logged to results)"""
-        logger.info(f"  [..] Warming up model: {model_name}")
-        
-        # Use this script file itself as a dummy file for warmup which is guaranteed to exist
-        dummy_file_path = __file__
-        
-        # Simple warmup prompt
-        warmup_prompt = "Hello"
-        payload = {
-            "file_path": str(dummy_file_path),
-            "model": model_name,
-            "prompt_template": warmup_prompt,
-            "options": {"temperature": 0.1, "num_predict": 10}
-        }
-        
-        try:
-            response = requests.post(
-                f"{self.backend_url}/api/process-file",
-                json=payload,
-                timeout=120
-            )
-            if response.status_code == 200:
-                data = response.json()
-                # Check if there was an actual error (Ollama not running, model not found, etc.)
-                if data.get('error'):
-                    logger.error(f"  [ERROR] Warmup failed: {data['error']}")
-                    logger.error(f"  Is Ollama running? Is model '{model_name}' installed?")
-                    raise RuntimeError(f"Warmup failed for {model_name}: {data['error']}")
-                
-                # Check for empty tags, but be more lenient - if we got a success response but no tags,
-                # it might just be the model being stubborn on the warmup prompt.
-                # We'll log a warning but proceed, as the real prompts might work better.
-                if not data.get('tags') or len(data.get('tags', [])) == 0:
-                    logger.warning(f"  [WARN] Warmup returned no tags for {model_name}")
-                    logger.warning(f"  This might be due to the model not following the warmup prompt.")
-                    logger.warning(f"  Proceeding with testing anyway...")
-                else:
-                    logger.info(f"  [OK] Model warmed up (generated: {data['tags']})")
-            else:
-                logger.error(f"  [ERROR] Warmup returned HTTP {response.status_code}")
-                raise RuntimeError(f"Warmup failed with HTTP {response.status_code}")
-        except requests.exceptions.RequestException as e:
-            logger.error(f"  [ERROR] Warmup failed: {e}")
-            raise RuntimeError(f"Cannot connect to backend during warmup: {e}")
     
     def process_file_with_combo(self, file_path, combo, run_number):
         """Process a file with a specific model+prompt combination"""

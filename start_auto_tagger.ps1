@@ -15,14 +15,14 @@ if (Test-Path $venvPath) {
     & $venvPath
 }
 
+# Get Python path for later use
+$pythonPath = (Resolve-Path ".venv\Scripts\python.exe").Path
+
 # Ensure dependencies are installed
 if (Test-Path "Sources\Backend\requirements.txt") {
     Write-Host "Checking dependencies..." -ForegroundColor Yellow
-    pip install -r Sources\Backend\requirements.txt
+    & $pythonPath -m pip install -r Sources\Backend\requirements.txt
 }
-
-# Get Python path for later use
-$pythonPath = (Resolve-Path ".venv\Scripts\python.exe").Path
 
 Write-Host ""
 Write-Host "Checking backend status..." -ForegroundColor Yellow
@@ -55,16 +55,29 @@ try {
         Start-Sleep -Seconds 1
         $attempt++
         try {
-            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/health" -TimeoutSec 2 -ErrorAction Stop
+            $response = Invoke-WebRequest -Uri "http://127.0.0.1:5000/api/health" -TimeoutSec 10 -ErrorAction Stop
             $backendReady = $true
             Write-Host "✓ Backend is ready!" -ForegroundColor Green
         } catch {
-            Write-Host "  Attempt $attempt/$maxAttempts..." -ForegroundColor Gray
-            # Check if job failed
+            Write-Host "  Attempt $attempt/$maxAttempts... (Job State: $($backendJob.State))" -ForegroundColor Gray
+            Write-Host "  Connection failed: $($_.Exception.Message)" -ForegroundColor Magenta
+            
+            # Check if job failed or verify output
             if ($backendJob.State -eq 'Failed' -or $backendJob.State -eq 'Stopped') {
                 Write-Host "Backend job stopped unexpectedly." -ForegroundColor Red
                 Receive-Job -Job $backendJob
                 break
+            }
+            # Optional: Peek at output to see if there are python errors (like ModuleNotFoundError)
+            if ($backendJob.HasMoreData) {
+                $output = Receive-Job -Job $backendJob -Keep
+                if ($output) {
+                    $errors = $output | Where-Object { $_ -match "Error" -or $_ -match "Exception" -or $_ -match "Traceback" }
+                    if ($errors) {
+                        Write-Host "  [Detected Errors in Background Job]:" -ForegroundColor Red
+                        $errors | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+                    }
+                }
             }
         }
     }

@@ -1,229 +1,135 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from file_processor import FileProcessor
+from ollama_client import OllamaClient
 import os
+import json
+from pathlib import Path
 
 app = Flask(__name__)
-CORS(app)  # Enable CORS for Tauri frontend
+CORS(app)
 
-processor = FileProcessor()
+# --- Globals ---
+# We will load the config once at startup
+CONFIG = {}
+def load_app_config():
+    """Loads the test_config.json for API use."""
+    global CONFIG
+    try:
+        # Assumes the script is run from the project root or Sources/Backend
+        config_path = Path(__file__).parent.parent.parent / "test_config.json"
+        if not config_path.exists():
+             # Fallback for running from different directories
+             config_path = Path("test_config.json")
+
+        with open(config_path, 'r') as f:
+            CONFIG = json.load(f)
+        app.logger.info(f"Successfully loaded config from {config_path}")
+    except Exception as e:
+        app.logger.error(f"FATAL: Could not load test_config.json. Error: {e}")
+        CONFIG = {"tags": {"text": [], "image": []}, "models": []} # Default empty config
+
+# Initialize components
+file_processor = FileProcessor()
+ollama_client = OllamaClient()
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Check if the API and Ollama are working"""
-    try:
-        # Test Ollama connection
-        import requests
-        # Use a short timeout so we don't block the health check
-        response = requests.get("http://localhost:11434/api/tags", timeout=0.5)
-        ollama_status = response.status_code == 200
-    except:
-        ollama_status = False
-    
     return jsonify({
         "status": "running",
-        "ollama_connected": ollama_status
+        "ollama_connected": ollama_client.is_ollama_running()
     })
-
-@app.route('/api/get-folder-files', methods=['POST'])
-def get_folder_files():
-    """Get list of all supported files in a folder"""
-    data = request.get_json()
-    
-    if not data or 'folder_path' not in data:
-        return jsonify({"error": "folder_path is required"}), 400
-    
-    folder_path = data['folder_path']
-    
-    if not os.path.exists(folder_path):
-        return jsonify({"error": "Folder not found"}), 404
-    
-    if not os.path.isdir(folder_path):
-        return jsonify({"error": "Path is not a directory"}), 400
-    
-    # Log the request for debugging
-    print(f"Getting file list for folder: {folder_path}")
-    
-    try:
-        files = processor.get_supported_files_in_folder(folder_path)
-        print(f"Found {len(files)} supported files in folder")
-        return jsonify({
-            "success": True,
-            "files": files,
-            "count": len(files)
-        })
-    except Exception as e:
-        print(f"Error getting folder files: {e}")
-        return jsonify({
-            "success": False,
-            "error": f"Error getting folder files: {str(e)}",
-            "files": [],
-            "count": 0
-        }), 500
-
-@app.route('/api/process-folder', methods=['POST'])
-def process_folder():
-    """Process all supported files in a folder and return tags for each"""
-    data = request.get_json()
-    
-    if not data or 'folder_path' not in data:
-        return jsonify({"error": "folder_path is required"}), 400
-    
-    folder_path = data['folder_path']
-    
-    if not os.path.exists(folder_path):
-        return jsonify({"error": "Folder not found"}), 404
-    
-    if not os.path.isdir(folder_path):
-        return jsonify({"error": "Path is not a directory"}), 400
-    
-    # Log the request for debugging
-    print(f"Processing folder: {folder_path}")
-    
-    try:
-        result = processor.process_folder(folder_path)
-        print(f"Folder processing result: {result.get('success', False)} - {result.get('summary', {})}")
-        return jsonify(result)
-    except Exception as e:
-        print(f"Error processing folder: {e}")
-        return jsonify({
-            "success": False,
-            "error": f"Internal processing error: {str(e)}",
-            "results": [],
-            "summary": {"total": 0, "processed": 0, "errors": 0}
-        }), 500
 
 @app.route('/api/process-file', methods=['POST'])
 def process_file():
-    """Process a single file and return tags with optional model/prompt override"""
+    """
+    Process a single file. This is the core endpoint that handles dynamic
+    prompt generation based on file content.
+    """
     data = request.get_json()
     
+    # --- Validation ---
     if not data or 'file_path' not in data:
         return jsonify({"error": "file_path is required"}), 400
     
     file_path = data['file_path']
-    
+    model_name = data.get('model')
+    prompt_template = data.get('prompt_template')
+    options = data.get('options')
+
+    if not all([file_path, model_name, prompt_template, options]):
+        return jsonify({"error": "Missing required fields: file_path, model, prompt_template, options"}), 400
+
     if not os.path.exists(file_path):
         return jsonify({"error": "File not found"}), 404
+
+    # --- File Processing ---
+    processed_content = file_processor.read_file_content(file_path)
+    if not processed_content:
+        return jsonify({"error": "Failed to process file content"}), 500
+
+    content_type = processed_content['type']
+    content = processed_content['content']
     
-    # Extract optional parameters
-    model = data.get('model', None)
-    prompt_template = data.get('prompt_template', None)
-    options = data.get('options', None)
+    # --- Model and Tag Logic ---
+    # Find the model's capabilities from the loaded config
+    model_info = next((m for m in CONFIG.get('models', []) if m['name'] == model_name), None)
+    if not model_info:
+        return jsonify({"error": f"Model '{model_name}' not found in config."}), 400
+
+    is_vision_model = 'image' in model_info.get('file_types', [])
     
-    # Log the request for debugging
-    print(f"Processing file: {file_path}")
-    if model:
-        print(f"  Using model: {model}")
-    if prompt_template:
-        print(f"  Using custom prompt template")
-    
-    try:
-        result = processor.process_file(file_path, model, prompt_template, options)
-        print(f"Processing result: {result.get('success', False)} - {len(result.get('tags', []))} tags - {result.get('processing_time_ms', 0):.2f}ms")
-        return jsonify(result)
-    except Exception as e:
-        print(f"Error processing file: {e}")
+    # Handle scanned PDFs: they require a vision model
+    if content_type == 'image_from_pdf' and not is_vision_model:
         return jsonify({
-            "success": False,
-            "error": f"Internal processing error: {str(e)}",
-            "tags": [],
-            "processing_time_ms": 0
-        }), 500
+            "error": f"Model '{model_name}' cannot process scanned PDF. A vision-capable model is required."
+        }), 400
 
-@app.route('/api/process-files', methods=['POST'])
-def process_files():
-    """Process multiple files and return tags for each"""
-    data = request.get_json()
+    # Determine which tag list to use
+    tag_list_key = 'text' # Default to text tags
+    if content_type == 'image': # Only use image tags for actual image files
+        tag_list_key = 'image'
     
-    if not data or 'file_paths' not in data:
-        return jsonify({"error": "file_paths array is required"}), 400
-    
-    file_paths = data['file_paths']
-    results = []
-    
-    for file_path in file_paths:
-        if os.path.exists(file_path):
-            result = processor.process_file(file_path)
-            results.append(result)
-        else:
-            results.append({
-                "filename": os.path.basename(file_path),
-                "path": file_path,
-                "success": False,
-                "error": "File not found",
-                "tags": []
-            })
-    
-    return jsonify({"results": results})
+    # Get the actual tags and format them
+    tags_to_use = CONFIG.get('tags', {}).get(tag_list_key, [])
+    tag_list_str = ", ".join(tags_to_use)
 
-@app.route('/api/supported-types', methods=['GET'])
-def get_supported_types():
-    """Get list of supported file extensions"""
-    return jsonify({
-        "text_extensions": list(processor.text_extensions),
-        "image_extensions": list(processor.image_extensions),
-        "all_extensions": list(processor.supported_extensions)
-    })
+    # --- Final Prompt Assembly ---
+    final_prompt = prompt_template.replace('{tag_list}', tag_list_str)
+    
+    # For text content, we also inject the text itself
+    if content_type == 'text':
+        # Apply truncation before injecting
+        truncated_text = file_processor._prepare_text_for_model(content, model_name)
+        final_prompt = final_prompt.replace('{text}', truncated_text)
+        images_payload = []
+    else: # For 'image' and 'image_from_pdf'
+        # The {text} placeholder is ignored for image prompts
+        final_prompt = final_prompt.replace('{text}', '') # Ensure it's empty
+        images_payload = [content] # The base64 content
 
-@app.route('/api/models', methods=['GET'])
-def get_available_models():
-    """Check which models are available in Ollama"""
+    # --- Call Ollama ---
     try:
-        import requests
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
+        tags, processing_time = ollama_client.generate_tags(
+            model=model_name,
+            prompt=final_prompt,
+            images=images_payload,
+            options=options
+        )
         
-        if response.status_code == 200:
-            models = response.json()
-            model_names = [model.get('name', '') for model in models.get('models', [])]
-            
-            return jsonify({
-                "available_models": model_names,
-                "tinyllama_available": any('tinyllama' in name.lower() for name in model_names),
-                "vision_available": any('llama3.2-vision' in name.lower() or 'vision' in name.lower() for name in model_names)
-            })
-        else:
-            return jsonify({"error": "Could not connect to Ollama"}), 500
-            
+        return jsonify({
+            "tags": tags,
+            "processing_time_ms": processing_time,
+            "error": None
+        })
     except Exception as e:
-        return jsonify({"error": f"Error checking models: {str(e)}"}), 500
+        app.logger.error(f"Error calling Ollama: {e}")
+        return jsonify({"error": str(e)}), 500
 
-def warm_up_models():
-    """Warm up models by sending small test requests"""
-    print("Warming up AI models...")
-    
-    try:
-        # Warm up TinyLlama
-        import requests
-        tiny_payload = {
-            "model": "tinyllama",
-            "prompt": "Hello",
-            "stream": False,
-            "options": {"temperature": 0.3, "num_predict": 1}
-        }
-        response = requests.post("http://localhost:11434/api/generate", json=tiny_payload, timeout=10)
-        if response.status_code == 200:
-            print("[OK] TinyLlama warmed up")
-    except:
-        print("! TinyLlama warmup failed")
-    
-    # Skip vision model warmup - it's large and slow to load
-    # Vision model will be loaded on first use instead
-    print("[SKIP] Skipping Vision model warmup (loads on first use)")
-
-if __name__ == '__main__':
-    print("Starting Tag Sense AI Backend...")
-    print("Supported file types:", processor.supported_extensions)
-    
-    # Only warm up models in the main reloader process (not in the initial process)
-    import os
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        # Warm up models in a separate thread to not block startup
-        import threading
-        warmup_thread = threading.Thread(target=warm_up_models)
-        warmup_thread.daemon = True
-        warmup_thread.start()
-    else:
-        print("Skipping model warmup in initial process (will warmup after reloader starts)...")
-    
-    app.run(debug=True, port=5000, threaded=True)
+# --- Main Execution ---
+if __name__ == "__main__":
+    load_app_config()
+    app.logger.info("Starting Tag Sense AI Backend...")
+    # Use a different port to avoid conflict with potential other services
+    app.run(host='0.0.0.0', port=5000, debug=False)

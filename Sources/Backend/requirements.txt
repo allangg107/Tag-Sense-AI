@@ -4,6 +4,7 @@ requests>=2.31.0
 # File processing and text extraction
 python-docx>=0.8.11
 PyPDF2>=3.0.0
+PyMuPDF>=1.23.0
 
 # Image processing
 Pillow>=10.0.0
