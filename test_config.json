@@ -1,27 +1,26 @@
 {
   "test_folder": "TestTagging",
   "benchmarks": {
-    "test_medium.txt": [
-      "email",
-      "finance",
-      "education",
-      "statement",
-      "legal",
-      "report"
-    ],
-    "test_long.txt": [
-      "agreement",
-      "contract",
-      "legal",
-      "finance"
-    ],
-    "test_medium_2.txt": [
-      "email",
-      "work",
-      "resume"
-    ],
+    "Learning_GitHub_Certificate.png": [ "certificate", "education", "work", "personal" ],
+    "Certificate_for_learning_Github_example.pdf": [ "certificate", "education", "work", "personal" ],
+    "Contract_example_1.docx": [ "contract", "legal", "school", "work", "personal" ],
+    "Contract_example_1.pdf": [ "contract", "legal", "school", "work", "personal" ],
+    "Cover_Letter_example_1.docx": [ "work", "resume", "code" ],
+    "Cover_Letter_example_content_1.pdf": [ "work", "resume", "code" ],
+    "Invoice_example_content_1.pdf": [ "invoice", "finance" ],
+    "NOT_ANON_Bank_Statement_example_1.pdf": [ "bank", "finance" ],
+    "NOT_ANON_Tax-1099-INT_example_1.pdf": [ "tax", "bank", "finance", "legal" ],
+    "Receipt_example_content_1.pdf": [ "receipt", "finance" ],
+    "Receipt_example_image_1.jpg": [ "receipt", "food" ],
+    "Receipt_example_scanned_1.pdf": [ "receipt", "finance", "gaming" ],
+    "Resume_example_1.docx": [ "resume", "work", "school", "code", "project" ],
+    "Resume_example_content_1.pdf": [ "resume", "work", "school", "code", "project" ],
+    "Resume_example_scanned_1.pdf": [ "resume", "work", "school", "code", "project" ],
+    "Resume_Josh_example_content.pdf": [ "resume", "work", "school", "project", "code" ],
+    "Resume_Saahil_example_content.pdf": [ "resume", "work", "school", "project", "code" ],
+    "Sworn_Declaration_example_1.pdf": [ "legal", "personal", "travel", "family", "certificate" ],
     "test_short.txt": [
-      "note"
+      "notes"
     ]
   },
   "tags": {
@@ -33,7 +32,7 @@
       "code", "notes", "email"
     ],
     "image": [
-      "screenshot", "receipt", "chart","photo", "meme",
+      "screenshot", "receipt", "photo", "meme",
       "animal", "food", "nature", "city", "people"
     ]
   },
