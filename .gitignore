@@ -56,8 +56,7 @@ Cargo.lock
 
 # Test folder and results
 /TestTagging/
-/test_results.jsonl
-/test_results original.jsonl
+/test_results*.jsonl
 /test_results.csv
 
 # IDE / Editor
