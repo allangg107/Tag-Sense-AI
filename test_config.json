@@ -28,8 +28,7 @@
       "personal", "work", "school", "family", "home", "finance", 
       "tax", "receipt", "invoice", "bank", "legal", "medical", "travel", 
       "recipe", "book", "gaming", "sport", "project", 
-      "resume", "contract", "certificate", 
-      "code", "notes", "email"
+      "resume", "contract", "certificate"
     ],
     "image": [
       "screenshot", "receipt", "photo", "meme",
@@ -42,7 +41,7 @@
       "name": "gemma3:12b",
       "file_types": ["text", "image"]
     }
-  ],
+  ], 
   "prompts": {
     "text": [
       {
