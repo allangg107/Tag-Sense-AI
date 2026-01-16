@@ -137,6 +137,7 @@ def process_file():
     model_name = data.get('model')
     prompt_template = data.get('prompt_template')
     options = data.get('options')
+    tag_category = data.get('tag_category')
 
     if not all([file_path, model_name, prompt_template, options]):
         return jsonify({"error": "Missing required fields: file_path, model, prompt_template, options"}), 400
@@ -167,12 +168,8 @@ def process_file():
         }), 400
 
     # Determine which tag list to use
-    tag_list_key = 'text' # Default to text tags
-    if content_type == 'image': # Only use image tags for actual image files
-        tag_list_key = 'image'
-    
-    # Get the actual tags and format them
-    tags_to_use = CONFIG.get('tags', {}).get(tag_list_key, [])
+    # Assume tags are set up correctly corresponding to the category
+    tags_to_use = CONFIG.get('tags', {}).get(tag_category, [])
     tag_list_str = ", ".join(tags_to_use)
 
     # --- Final Prompt Assembly ---

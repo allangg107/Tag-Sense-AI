@@ -17,8 +17,12 @@ def calculate_jaccard(list1, list2):
 
 def analyze():
     # Load config
-    with open('test_config.json', 'r') as f:
-        config = json.load(f)
+    try:
+        with open('test_config.json', 'r') as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print("Error: test_config.json not found. Please run this script from the project root.")
+        return
     
     benchmarks = config.get('benchmarks', {})
     
@@ -38,16 +42,24 @@ def analyze():
     with open(results_file, 'r') as f:
         for line in f:
             if line.strip():
-                results.append(json.loads(line))
+                try:
+                    results.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
     
-    # Aggregate scores
-    # Key: prompt_id
-    # Value: list of scores
-    combo_scores = defaultdict(list)
+    # --- Categorized Aggregation ---
+    # Key: normalized category (e.g., 'text_domain')
+    # Value: defaultdict(list) where key is prompt_id and value is list of scores
+    category_scores = defaultdict(lambda: defaultdict(list))
     
-    # Track specific tag errors
-    false_positives = Counter() # Generated but not expected
-    false_negatives = Counter() # Expected but not generated
+    # Key: normalized category
+    # Value: Counter()
+    category_false_positives = defaultdict(Counter)
+    category_false_negatives = defaultdict(Counter)
+
+    config_tags = config.get('tags', {})
+    # Sort categories by length, longest first, to ensure "text_domain" is matched before "text"
+    sorted_categories = sorted(config_tags.keys(), key=len, reverse=True)
 
     for res in results:
         file_path = res.get('file_path', '')
@@ -56,67 +68,79 @@ def analyze():
         if filename not in benchmarks:
             continue
             
-        expected_tags = benchmarks[filename]
+        prompt_id = res.get('prompt_id')
+        if not prompt_id:
+            continue
+
+        # --- Identify Category from prompt_id ---
+        # e.g., "gemma3_12b_text_domain_domain_focus" -> "text_domain"
+        category = None
+        for cat in sorted_categories:
+            if cat in prompt_id:
+                category = cat
+                break
+        
+        if not category:
+            # print(f"Warning: Could not determine category for prompt_id: {prompt_id}")
+            continue
+        
+        # Normalize category key to handle potential casing duplicates and grouping
+        normalized_category = category.lower().strip()
+        
+        # --- Filter Expected Tags by Category ---
+        all_expected_tags = benchmarks[filename]
+        # Use existing category key (from config) to fetch tags set
+        category_tag_set = set(config_tags.get(category, []))
+        
+        # We only care about the benchmark tags that belong to the current category
+        filtered_expected_tags = [tag for tag in all_expected_tags if tag in category_tag_set]
+
         generated_tags = res.get('tags', [])
         
-        # Analyze discrepancies
-        exp_set = set(t.lower() for t in expected_tags)
+        # --- Analyze Discrepancies for the Category ---
+        exp_set = set(t.lower() for t in filtered_expected_tags)
         gen_set = set(t.lower() for t in generated_tags)
         
         fp = gen_set - exp_set
         fn = exp_set - gen_set
         
-        false_positives.update(fp)
-        false_negatives.update(fn)
+        category_false_positives[normalized_category].update(fp)
+        category_false_negatives[normalized_category].update(fn)
+        
+        # --- Calculate Score ---
+        score = calculate_jaccard(filtered_expected_tags, generated_tags)
+        category_scores[normalized_category][prompt_id].append(score)
 
-        # Clean generated tags (sometimes they are strings looking like lists if parsing failed, 
-        # but the provided snippet shows they are lists. 
-        # However, one entry showed: "tags": ["json", "[\"work", "project", "email\"]", "**analysis:**"]
-        # This indicates some models output raw text that wasn't parsed perfectly.
-        # The 'tags' field in jsonl seems to be what the system *extracted*.
-        # If the system failed to extract a clean list, the score will naturally be low, which is correct.
-        # We will treat the list as is.
+    # --- Display Categorized Results ---
+    # Sort keys for consistent output order
+    for category in sorted(category_scores.keys()):
+        combo_scores = category_scores[category]
         
-        # Handle the weird case where a tag might be a string representation of a list
-        # e.g. "[\"work", "resume\"]"
-        # The current extraction logic in the app might be imperfect. 
-        # We will try to clean it up slightly for fairness, or just take it as is.
-        # Given the user wants to know which *generated* the most relevant tags, 
-        # if the model output garbage that couldn't be parsed, it's a bad result.
-        # So we will use the tags as provided by the file.
-        
-        score = calculate_jaccard(expected_tags, generated_tags)
-        
-        # The prompt_id in results is like "phi4_allan_custom"
-        # We can use this directly as the identifier for the combo.
-        combo_id = res.get('prompt_id')
-        model_name = res.get('model_name')
-        
-        # If prompt_id is missing, construct it
-        if not combo_id and model_name:
-             combo_id = f"{model_name}_unknown"
-             
-        if combo_id:
-            combo_scores[combo_id].append(score)
+        print("\n" + "="*60)
+        print(f"ANALYSIS FOR CATEGORY: {category.upper()}")
+        print("="*60)
 
-    # Calculate average scores
-    avg_scores = []
-    for combo, scores in combo_scores.items():
-        avg = sum(scores) / len(scores)
-        avg_scores.append((combo, avg))
-    
-    # Sort
-    avg_scores.sort(key=lambda x: x[1], reverse=True)
-    
-    print("Top 5 Model + Prompt Combinations:")
-    for i, (combo, score) in enumerate(avg_scores[:5], 1):
-        print(f"{i}. {combo} (Score: {score:.4f})")
-    print("\nTop 5 Missing Tags (False Negatives - Expected but not found):")
-    for tag, count in false_negatives.most_common(5):
-        print(f" - '{tag}': missed {count} times")
+        # Calculate average scores
+        avg_scores = []
+        for combo, scores in combo_scores.items():
+            avg = sum(scores) / len(scores)
+            avg_scores.append((combo, avg))
+        
+        # Sort
+        avg_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        print("Top Model + Prompt Combinations:")
+        for i, (combo, score) in enumerate(avg_scores, 1):
+            print(f"{i}. {combo} (Score: {score:.4f})")
+        
+        print("\nTop 5 Missing Tags (False Negatives):")
+        for tag, count in category_false_negatives[category].most_common(5):
+            print(f" - '{tag}': missed {count} times")
 
-    print("\nTop 5 Extra Tags (False Positives - Generated but not expected):")
-    for tag, count in false_positives.most_common(5):
-        print(f" - '{tag}': added {count} times")
+        print("\nTop 5 Extra Tags (False Positives):")
+        for tag, count in category_false_positives[category].most_common(5):
+            print(f" - '{tag}': added {count} times")
+    print("\n")
+
 if __name__ == "__main__":
     analyze()

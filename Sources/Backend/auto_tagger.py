@@ -43,27 +43,40 @@ class AutoTaggerHandler(FileSystemEventHandler):
         Load test configuration and generate model+prompt combinations.
         The prompt templates are NOT formatted here; the API is responsible
         for injecting the correct tag lists.
+        Supports categorized prompts (e.g. text_domain, text_functional_type).
         """
         with open(config_path, 'r') as f:
             config = json.load(f)
 
         combinations = []
+        
+        def get_base_type(cat_name):
+            if cat_name.startswith('text') or cat_name == 'text': return 'text'
+            if cat_name.startswith('image') or cat_name == 'image': return 'image'
+            return None
+
         for model in config['models']:
-            for file_type in model['file_types']:
-                # Get the prompts for this file type (e.g., 'text' or 'image')
-                type_prompts = config.get('prompts', {}).get(file_type, [])
+            supported_types = set(model['file_types'])
+            # Iterate over all prompt categories available in config
+            prompt_categories = config.get('prompts', {}).keys()
+            
+            for category in prompt_categories:
+                base_type = get_base_type(category)
                 
-                for prompt in type_prompts:
-                    combo = {
-                        'id': f"{model['id']}_{file_type}_{prompt['id']}",
-                        'model': model['name'],
-                        # This combo is for a specific file type
-                        'file_types': [file_type], 
-                        # Pass the raw prompt template to the API
-                        'prompt': prompt['prompt'], 
-                        'options': prompt['options']
-                    }
-                    combinations.append(combo)
+                # If we identify the type and the model supports it
+                if base_type and base_type in supported_types:
+                    type_prompts = config['prompts'][category]
+                    
+                    for prompt in type_prompts:
+                        combo = {
+                            'id': f"{model['id']}_{category}_{prompt['id']}",
+                            'model': model['name'],
+                            'file_types': [base_type],
+                            'prompt': prompt['prompt'],
+                            'options': prompt['options'],
+                            'tag_category': category # Pass the specific category key
+                        }
+                        combinations.append(combo)
         
         config['combinations'] = combinations
         logger.info(f"Generated {len(combinations)} combinations from {len(config['models'])} models")
@@ -111,7 +124,8 @@ class AutoTaggerHandler(FileSystemEventHandler):
             "file_path": str(file_path),
             "model": combo['model'],
             "prompt_template": combo['prompt'],
-            "options": combo['options']
+            "options": combo['options'],
+            "tag_category": combo.get('tag_category')
         }
         
         start_time = time.time()
