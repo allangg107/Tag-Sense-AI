@@ -24,16 +24,19 @@
     "text_domain": [
       "personal", "professional", "academic", "finance"
     ],
-    "text_functional_type": [
+    "text_purpose": [
       "legal", "tax", "proof_of_purchase", "employment", "identification", "correspondence", "instructional", "medical", "miscellaneous"
+    ],
+    "text_specific": [
+      "resume", "cover_letter", "receipt", "invoice", "miscellaneous"
     ],
     "image_domain": [
       "personal", "professional", "academic", "finance"
     ],
-    "image_functional_type": [
+    "image_purpose": [
       "legal", "tax", "proof_of_purchase", "employment", "identification", "correspondence", "instructional", "medical", "miscellaneous"
     ],
-    "image_content": [
+    "image_specific": [
       "receipt", "photo", "meme",
       "animal", "food", "nature", "city", "people"
     ]
@@ -48,7 +51,7 @@
   "prompts": {
     "text_domain": [
       {
-        "id": "simple_context",
+        "id": "simple",
         "prompt": "Classify the following content into one of these domains: {tag_list}.\n\nReturn ONLY the tag.\n\nContent:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -56,7 +59,7 @@
         }
       },
       {
-        "id": "simple_context_with_examples",
+        "id": "simple_with_examples",
         "prompt": "Classify the following content into one of these domains: {tag_list}.\n\nExamples:\n- personal: diary, family photo\n- professional: work email, contract\n- academic: study notes, research paper, certification\n- finance: bank statement, receipt\n\nReturn ONLY the tag.\n\nContent:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -64,7 +67,7 @@
         }
       },
       {
-        "id": "domain_auditor",
+        "id": "auditor",
         "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these domains: {tag_list}.\n\nReturn ONLY the tag.\n\nContent:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -72,7 +75,7 @@
         }
       },
       {
-        "id": "domain_auditor_with_examples",
+        "id": "auditor_with_examples",
         "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these domains: {tag_list}.\n\nGuidance:\n- Use 'personal' for private life (diary, family).\n- Use 'professional' for work (contracts, resumes).\n- Use 'academic' for school (notes, papers).\n- Use 'finance' for money (bank, tax).\n\nReturn ONLY the tag.\n\nContent:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -80,9 +83,9 @@
         }
       }
     ],
-    "text_functional_type": [
+    "text_purpose": [
       {
-        "id": "simple_functional_type",
+        "id": "simple",
         "prompt": "Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -90,7 +93,7 @@
         }
       },
       {
-        "id": "simple_functional_type_with_examples",
+        "id": "simple_with_examples",
         "prompt": "Classify the following content into one of these types: {tag_list}.\n\nExamples:\n- legal: contracts, agreements\n- tax: W2, returns\n- proof_of_purchase: receipts, invoices\n- employment: resumes, cover letters\n- correspondence: emails, letters\n- instructional: guides, manuals, recipes\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -114,7 +117,7 @@
         }
       },
       {
-        "id": "functional_auditor",
+        "id": "auditor",
         "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nContent:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -122,7 +125,7 @@
         }
       },
       {
-        "id": "functional_auditor_with_examples",
+        "id": "auditor_with_examples",
         "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these types: {tag_list}.\n\nReference:\n- legal (contracts)\n- tax (forms)\n- proof_of_purchase (receipts)\n- employment (resumes)\n- correspondence (letters)\n- instructional (guides)\n\nReturn ONLY the tag.\n\nContent:\n{text}",
         "options": {
           "temperature": 0.0,
@@ -130,9 +133,27 @@
         }
       }
     ],
-    "image": [
+    "text_specific": [
       {
-        "id": "img_basic",
+        "id": "simple",
+        "prompt": "Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      },
+      {
+        "id": "simple_with_examples",
+        "prompt": "Classify the following content into one of these types: {tag_list}.\n\nExamples:\n- legal: contracts, agreements\n- tax: W2, returns\n- proof_of_purchase: receipts, invoices\n- employment: resumes, cover letters\n- correspondence: emails, letters\n- instructional: guides, manuals, recipes\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      }
+    ],
+    "image_domain": [
+      {
+        "id": "simple",
         "prompt": "Analyze this image and describe it using ONLY tags from this list: {tag_list}. Return comma-separated tags.",
         "options": {
           "temperature": 0.0,
@@ -140,7 +161,7 @@
         }
       },
       {
-        "id": "img_basic_with_examples",
+        "id": "simple_with_examples",
         "prompt": "Analyze this image and describe it using ONLY tags from this list: {tag_list}.\n\nVisual Examples:\n- receipt: Paper showing purchase details.\n- photo: General photography.\n- meme: Humorous image with text overlays.\n\nReturn comma-separated tags.",
         "options": {
           "temperature": 0.0,

@@ -9,7 +9,7 @@ import time
 import requests
 import subprocess
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import logging
@@ -130,6 +130,11 @@ class AutoTaggerHandler(FileSystemEventHandler):
         
         start_time = time.time()
         
+        # Default result values
+        tags = []
+        error = None
+        processing_time_ms = 0
+        
         try:
             response = requests.post(
                 f"{self.backend_url}/api/process-file",
@@ -137,77 +142,51 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 timeout=360
             )
             
-            elapsed_ms = (time.time() - start_time) * 1000
+            processing_time_ms = (time.time() - start_time) * 1000
             
             if response.status_code == 200:
                 data = response.json()
+                tags = data.get('tags', [])
+                processing_time_ms = data.get('processing_time_ms', processing_time_ms)
+                error = data.get('error')
                 
-                result = {
-                    "timestamp": datetime.utcnow().isoformat() + 'Z',
-                    "file_path": str(file_path),
-                    "file_modified_time": int(os.path.getmtime(file_path)),
-                    "model_name": combo['model'],
-                    "prompt_id": combo['id'],
-                    "run_number": run_number,
-                    "tags": data.get('tags', []),
-                    "processing_time_ms": data.get('processing_time_ms', elapsed_ms),
-                    "error": data.get('error')
-                }
-                
-                if result['error'] is None:
-                    logger.info(f"    [OK] Success: {len(result['tags'])} tags in {result['processing_time_ms']:.2f}ms")
-                    logger.info(f"    Tags: {result['tags']}")
+                if error is None:
+                    logger.info(f"    [OK] Success: {len(tags)} tags in {processing_time_ms:.2f}ms")
+                    logger.info(f"    Tags: {tags}")
                 else:
-                    logger.warning(f"    [FAIL] Failed: {result['error']}")
-                
-                self.write_result(result)
-                
+                    logger.warning(f"    [FAIL] Failed: {error}")
             else:
-                logger.error(f"    [FAIL] Backend error: HTTP {response.status_code}")
-                result = {
-                    "timestamp": datetime.utcnow().isoformat() + 'Z',
-                    "file_path": str(file_path),
-                    "file_modified_time": int(os.path.getmtime(file_path)),
-                    "model_name": combo['model'],
-                    "prompt_id": combo['id'],
-                    "run_number": run_number,
-                    "tags": [],
-                    "processing_time_ms": elapsed_ms,
-                    "error": f"HTTP {response.status_code}"
-                }
-                self.write_result(result)
+                error = f"HTTP {response.status_code}"
+                logger.error(f"    [FAIL] Backend error: {error}")
                 
         except requests.exceptions.Timeout:
-            elapsed_ms = (time.time() - start_time) * 1000
-            logger.error(f"    [FAIL] Request timeout")
-            result = {
-                "timestamp": datetime.utcnow().isoformat() + 'Z',
-                "file_path": str(file_path),
-                "file_modified_time": int(os.path.getmtime(file_path)),
-                "model_name": combo['model'],
-                "prompt_id": combo['id'],
-                "run_number": run_number,
-                "tags": [],
-                "processing_time_ms": elapsed_ms,
-                "error": "Request timeout"
-            }
-            self.write_result(result)
+            processing_time_ms = (time.time() - start_time) * 1000
+            error = "Request timeout"
+            logger.error(f"    [FAIL] {error}")
             
         except Exception as e:
-            elapsed_ms = (time.time() - start_time) * 1000
-            logger.error(f"    [FAIL] Error: {e}")
-            result = {
-                "timestamp": datetime.utcnow().isoformat() + 'Z',
-                "file_path": str(file_path),
-                "file_modified_time": int(os.path.getmtime(file_path)),
-                "model_name": combo['model'],
-                "prompt_id": combo['id'],
-                "run_number": run_number,
-                "tags": [],
-                "processing_time_ms": elapsed_ms,
-                "error": str(e)
-            }
-            self.write_result(result)
+            processing_time_ms = (time.time() - start_time) * 1000
+            error = str(e)
+            logger.error(f"    [FAIL] Error: {error}")
+
+        # Consolidated result creation
+        try:
+            mod_time = int(os.path.getmtime(file_path))
+        except OSError:
+            mod_time = 0
+
+        result = {
+            "timestamp": datetime.now(timezone.utc).strftime('%Y-%m-%d_%H:%M:%S'),
+            "file_path": os.path.basename(file_path),
+            "file_modified_time": mod_time,
+            "model_name": combo['model'],
+            "prompt_id": combo['id'],
+            "run_number": run_number,
+            "tags": tags,
+            "processing_time_ms": round(processing_time_ms, 2),
+            "error": error
+        }
+        self.write_result(result)
     
     def process_file(self, file_path):
         """Process file through all applicable model+prompt combinations"""
