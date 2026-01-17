@@ -3,20 +3,5 @@ Auto-tag files based on suggested tags using AI.
 
 <img width="1918" height="1078" alt="image" src="https://github.com/user-attachments/assets/5e87c305-ff58-4c1c-84bb-ee78160467e8" />
 
-# Current Approach (WIP)
-1) User Interaction (React + Tauri)
-- User selects files and clicks “Auto Tag My Files.”
-- Tauri backend (Rust) receives the event and launches the Python script (via sidecar or API call).
-
-2) AI Tagging (Python Backend)
-- Python analyzes file content (text, images, metadata).
-- A local AI model (e.g., transformer for text, CNN for images) generates suggested tags.
-- Tags are stored in a shared location (e.g., SQLite DB, JSON file, or REST endpoint).
-
-3) User Review (React UI)
-- Suggested tags are displayed in the UI.
-- User can accept, reject, or edit them.
-
-4) Native Tagging (C++ COM DLL)
-- Upon acceptance, Tauri or Python triggers the C++ layer.
-- C++ reads the stored tags and applies them via Windows Explorer Property Handler.
+# Project Migration Alert
+This project has been migrated into the Producivity Plus Pack repo, where it will continue development instead. The PPP repo is private, so if you are interested in seeing this project's progress, please reach out via the links on my profile.
