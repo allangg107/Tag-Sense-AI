@@ -208,14 +208,15 @@ class AutoTaggerHandler(FileSystemEventHandler):
         
         logger.info(f"Found {len(applicable_combos)} applicable combinations for {file_type} file")
         
-        logger.info(f"Running each combination 2 times for consistency testing")
+        num_runs = 1
+        logger.info(f"Running each combination {num_runs} time(s) for consistency testing")
         
-        total_runs = len(applicable_combos) * 2
+        total_runs = len(applicable_combos) * num_runs
         run_count = 0
         
-        # Process with each combination sequentially, twice
+        # Process with each combination sequentially
         for combo in applicable_combos:
-            for run_number in [1, 2]:
+            for run_number in range(1, num_runs + 1):
                 if self.interrupted:
                     logger.info("\n[INTERRUPTED] Stopping processing due to interrupt signal")
                     return

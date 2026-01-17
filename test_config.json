@@ -1,23 +1,23 @@
 {
   "test_folder": "TestTagging",
   "benchmarks": {
-    "Learning_GitHub_Certificate.png": [ "academic" ],
-    "Certificate_for_learning_Github_example.pdf": [ "academic" ],
-    "Contract_example_1.docx": [ "professional", "legal" ],
-    "Contract_example_1.pdf": [ "professional", "legal" ],
-    "Cover_Letter_example_1.docx": [ "professional", "employment" ],
-    "Cover_Letter_example_content_1.pdf": [ "professional", "employment" ],
-    "Invoice_example_content_1.pdf": [ "finance", "proof_of_purchase" ],
-    "NOT_ANON_Bank_Statement_example_1.pdf": [ "finance", "proof_of_purchase" ],
+    "Learning_GitHub_Certificate.png": [ "academic", "certificate" ],
+    "Certificate_for_learning_Github_example.pdf": [ "academic", "certificate" ],
+    "Contract_example_1.docx": [ "professional", "legal", "contract" ],
+    "Contract_example_1.pdf": [ "professional", "legal", "contract" ],
+    "Cover_Letter_example_1.docx": [ "professional", "employment", "cover_letter" ],
+    "Cover_Letter_example_content_1.pdf": [ "professional", "employment", "cover_letter" ],
+    "Invoice_example_content_1.pdf": [ "finance", "proof_of_purchase", "invoice" ],
+    "NOT_ANON_Bank_Statement_example_1.pdf": [ "finance", "proof_of_purchase", "bank_statement" ],
     "NOT_ANON_Tax-1099-INT_example_1.pdf": [ "finance", "tax" ],
-    "Receipt_example_content_1.pdf": [ "finance", "proof_of_purchase" ],
-    "Receipt_example_image_1.jpg": [ "receipt", "food" ],
-    "Receipt_example_scanned_1.pdf": [ "finance", "proof_of_purchase" ],
-    "Resume_example_1.docx": [ "professional", "employment" ],
-    "Resume_example_content_1.pdf": [ "professional", "employment" ],
-    "Resume_example_scanned_1.pdf": [ "professional", "employment" ],
-    "Resume_Josh_example_content.pdf": [ "professional", "employment" ],
-    "Resume_Saahil_example_content.pdf": [ "professional", "employment" ],
+    "Receipt_example_content_1.pdf": [ "finance", "proof_of_purchase", "receipt" ],
+    "Receipt_example_image_1.jpg": [ "finance", "proof_of_purchase", "receipt", "food" ],
+    "Receipt_example_scanned_1.pdf": [ "finance", "proof_of_purchase", "receipt" ],
+    "Resume_example_1.docx": [ "professional", "employment", "resume" ],
+    "Resume_example_content_1.pdf": [ "professional", "employment", "resume" ],
+    "Resume_example_scanned_1.pdf": [ "professional", "employment", "resume" ],
+    "Resume_Josh_example_content.pdf": [ "professional", "employment", "resume" ],
+    "Resume_Saahil_example_content.pdf": [ "professional", "employment", "resume" ],
     "Sworn_Declaration_example_1.pdf": [ "professional", "legal" ]
   },
   "tags": {
@@ -28,7 +28,7 @@
       "legal", "tax", "proof_of_purchase", "employment", "identification", "correspondence", "instructional", "medical", "miscellaneous"
     ],
     "text_specific": [
-      "resume", "cover_letter", "receipt", "invoice", "miscellaneous"
+      "resume", "cover_letter", "receipt", "invoice", "contract", "certificate", "bank_statement", "miscellaneous"
     ],
     "image_domain": [
       "personal", "professional", "academic", "finance"
@@ -37,8 +37,8 @@
       "legal", "tax", "proof_of_purchase", "employment", "identification", "correspondence", "instructional", "medical", "miscellaneous"
     ],
     "image_specific": [
-      "receipt", "photo", "meme",
-      "animal", "food", "nature", "city", "people"
+      "receipt", "photo", "meme", "contract", "certificate",
+      "animal", "food", "nature", "city", "people", "bank_statement"
     ]
   },
   "models": [
@@ -137,14 +137,6 @@
       {
         "id": "simple",
         "prompt": "Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
-        "options": {
-          "temperature": 0.0,
-          "num_predict": 30
-        }
-      },
-      {
-        "id": "simple_with_examples",
-        "prompt": "Classify the following content into one of these types: {tag_list}.\n\nExamples:\n- legal: contracts, agreements\n- tax: W2, returns\n- proof_of_purchase: receipts, invoices\n- employment: resumes, cover letters\n- correspondence: emails, letters\n- instructional: guides, manuals, recipes\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
         "options": {
           "temperature": 0.0,
           "num_predict": 30
