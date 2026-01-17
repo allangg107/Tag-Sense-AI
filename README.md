@@ -8,4 +8,4 @@ With a UI to manually select files to tag as well as a backend file watching sys
 The tool also has scripts to capture the generated tags, processing metrics, and errors into a results log, serving as a testing harness for optimizing AI model performance. Config supports easily adding new models and prompts to automatically test all combinations with an analysis script to quickly figure out the highest performers.
 
 # Project Migration Alert
-This project has been migrated into the Producivity Plus Pack repo, where it will continue development instead. Within that Pack, Tag Sense AI will  natively apply tags on Windows accross all files in the Windows Index. The PPP repo is private, so if you are interested in seeing this project's progress, please reach out via the links on my profile.
+This project has been migrated into the Productivity Plus Pack repo, where it will continue development instead. Within that Pack, Tag Sense AI will natively apply tags on Windows across all files in the Windows Index. The PPP repo is private, so if you are interested in seeing this project's progress, please reach out via the links on my profile.
