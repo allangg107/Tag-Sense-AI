@@ -43,8 +43,8 @@
   },
   "models": [
     {
-      "id": "gemma3_12b",
-      "name": "gemma3:12b",
+      "id": "gemma3_4b",
+      "name": "gemma3:4b",
       "file_types": ["text", "image"]
     }
   ], 

@@ -19,10 +19,15 @@ def load_app_config():
     global CONFIG
     try:
         # Assumes the script is run from the project root or Sources/Backend
-        config_path = Path(__file__).parent.parent.parent / "test_config.json"
+        # Use .resolve() to ensure we have an absolute path so .parent works as expected
+        config_path = Path(__file__).resolve().parent.parent.parent / "test_config.json"
+        
         if not config_path.exists():
-             # Fallback for running from different directories
-             config_path = Path("test_config.json")
+             # Fallback: Check if we are running from root and config is right there
+             if Path("test_config.json").exists():
+                 config_path = Path("test_config.json")
+             else:
+                 app.logger.warning(f"Config not found at {config_path}, searching CWD...")
 
         with open(config_path, 'r') as f:
             CONFIG = json.load(f)
@@ -139,7 +144,8 @@ def process_file():
     options = data.get('options')
     tag_category = data.get('tag_category')
 
-    if not all([file_path, model_name, prompt_template, options]):
+    # Validate required fields (options can be empty dict, so check for None specifically for it)
+    if not all([file_path, model_name, prompt_template]) or options is None:
         return jsonify({"error": "Missing required fields: file_path, model, prompt_template, options"}), 400
 
     if not os.path.exists(file_path):

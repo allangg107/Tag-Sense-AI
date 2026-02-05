@@ -156,7 +156,12 @@ class AutoTaggerHandler(FileSystemEventHandler):
                 else:
                     logger.warning(f"    [FAIL] Failed: {error}")
             else:
-                error = f"HTTP {response.status_code}"
+                try:
+                    error_detail = response.json().get('error', response.text)
+                except:
+                    error_detail = response.text
+                
+                error = f"HTTP {response.status_code}: {error_detail}"
                 logger.error(f"    [FAIL] Backend error: {error}")
                 
         except requests.exceptions.Timeout:

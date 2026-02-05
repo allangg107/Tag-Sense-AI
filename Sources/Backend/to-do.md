@@ -1,1 +1,0 @@
-- Use Python to manage the tagging logic, metadata extraction, and AI-based suggestions
