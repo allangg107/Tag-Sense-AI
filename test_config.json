@@ -1,0 +1,165 @@
+{
+  "test_folder": "TestTagging",
+  "benchmarks": {
+    "Learning_GitHub_Certificate.png": [ "academic", "certificate" ],
+    "Certificate_for_learning_Github_example.pdf": [ "academic", "certificate" ],
+    "Contract_example_1.docx": [ "professional", "legal", "contract" ],
+    "Contract_example_1.pdf": [ "professional", "legal", "contract" ],
+    "Cover_Letter_example_1.docx": [ "professional", "employment", "cover_letter" ],
+    "Cover_Letter_example_content_1.pdf": [ "professional", "employment", "cover_letter" ],
+    "Invoice_example_content_1.pdf": [ "finance", "proof_of_purchase", "invoice" ],
+    "NOT_ANON_Bank_Statement_example_1.pdf": [ "finance", "proof_of_purchase", "bank_statement" ],
+    "NOT_ANON_Tax-1099-INT_example_1.pdf": [ "finance", "tax" ],
+    "Receipt_example_content_1.pdf": [ "finance", "proof_of_purchase", "receipt" ],
+    "Receipt_example_image_1.jpg": [ "finance", "proof_of_purchase", "receipt", "food" ],
+    "Receipt_example_scanned_1.pdf": [ "finance", "proof_of_purchase", "receipt" ],
+    "Resume_example_1.docx": [ "professional", "employment", "resume" ],
+    "Resume_example_content_1.pdf": [ "professional", "employment", "resume" ],
+    "Resume_example_scanned_1.pdf": [ "professional", "employment", "resume" ],
+    "Resume_Josh_example_content.pdf": [ "professional", "employment", "resume" ],
+    "Resume_Saahil_example_content.pdf": [ "professional", "employment", "resume" ],
+    "Sworn_Declaration_example_1.pdf": [ "professional", "legal" ]
+  },
+  "tags": {
+    "text_domain": [
+      "personal", "professional", "academic", "finance"
+    ],
+    "text_purpose": [
+      "legal", "tax", "proof_of_purchase", "employment", "identification", "correspondence", "instructional", "medical", "miscellaneous"
+    ],
+    "text_specific": [
+      "resume", "cover_letter", "receipt", "invoice", "contract", "certificate", "bank_statement", "miscellaneous"
+    ],
+    "image_domain": [
+      "personal", "professional", "academic", "finance"
+    ],
+    "image_purpose": [
+      "legal", "tax", "proof_of_purchase", "employment", "identification", "correspondence", "instructional", "medical", "miscellaneous"
+    ],
+    "image_specific": [
+      "receipt", "photo", "meme", "contract", "certificate",
+      "animal", "food", "nature", "city", "people", "bank_statement"
+    ]
+  },
+  "models": [
+    {
+      "id": "gemma4_e4b",
+      "name": "gemma4:e4b",
+      "file_types": ["text", "image"]
+    }
+  ], 
+  "prompts": {
+    "text_domain": [
+      {
+        "id": "simple",
+        "prompt": "Classify the following content into one of these domains: {tag_list}.\n\nReturn ONLY the tag.\n\nContent:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 20
+        }
+      },
+      {
+        "id": "simple_with_examples",
+        "prompt": "Classify the following content into one of these domains: {tag_list}.\n\nExamples:\n- personal: diary, family photo\n- professional: work email, contract\n- academic: study notes, research paper, certification\n- finance: bank statement, receipt\n\nReturn ONLY the tag.\n\nContent:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 20
+        }
+      },
+      {
+        "id": "auditor",
+        "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these domains: {tag_list}.\n\nReturn ONLY the tag.\n\nContent:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 20
+        }
+      },
+      {
+        "id": "auditor_with_examples",
+        "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these domains: {tag_list}.\n\nGuidance:\n- Use 'personal' for private life (diary, family).\n- Use 'professional' for work (contracts, resumes).\n- Use 'academic' for school (notes, papers).\n- Use 'finance' for money (bank, tax).\n\nReturn ONLY the tag.\n\nContent:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 20
+        }
+      }
+    ],
+    "text_purpose": [
+      {
+        "id": "simple",
+        "prompt": "Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      },
+      {
+        "id": "simple_with_examples",
+        "prompt": "Classify the following content into one of these types: {tag_list}.\n\nExamples:\n- legal: contracts, agreements\n- tax: W2, returns\n- proof_of_purchase: receipts, invoices\n- employment: resumes, cover letters\n- correspondence: emails, letters\n- instructional: guides, manuals, recipes\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      },
+      {
+        "id": "strict_utility",
+        "prompt": "Categorize the document based on its utility. Choose exactly one tag from this list: {tag_list}\n\nReturn ONLY the tag.\n\nContent: {text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      },
+      {
+        "id": "strict_utility_with_examples",
+        "prompt": "Categorize the document based on its utility. Choose exactly one tag from this list: {tag_list}\n\nKey Definitions:\n- proof_of_purchase: Reciepts or Invoices.\n- employment: Resumes or Cover Letters.\n- correspondence: Communications like emails.\n- instructional: How-to guides or recipes.\n\nReturn ONLY the tag.\n\nContent: {text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      },
+      {
+        "id": "auditor",
+        "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nContent:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 20
+        }
+      },
+      {
+        "id": "auditor_with_examples",
+        "prompt": "You are a strict Data Auditor. Your job is to categorize content. Classify the following content into one of these types: {tag_list}.\n\nReference:\n- legal (contracts)\n- tax (forms)\n- proof_of_purchase (receipts)\n- employment (resumes)\n- correspondence (letters)\n- instructional (guides)\n\nReturn ONLY the tag.\n\nContent:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 20
+        }
+      }
+    ],
+    "text_specific": [
+      {
+        "id": "simple",
+        "prompt": "Classify the following content into one of these types: {tag_list}.\n\nReturn ONLY the tag.\n\nDocument Content:\n{text}",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 30
+        }
+      }
+    ],
+    "image_domain": [
+      {
+        "id": "simple",
+        "prompt": "Analyze this image and describe it using ONLY tags from this list: {tag_list}. Return comma-separated tags.",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 50
+        }
+      },
+      {
+        "id": "simple_with_examples",
+        "prompt": "Analyze this image and describe it using ONLY tags from this list: {tag_list}.\n\nVisual Examples:\n- receipt: Paper showing purchase details.\n- photo: General photography.\n- meme: Humorous image with text overlays.\n\nReturn comma-separated tags.",
+        "options": {
+          "temperature": 0.0,
+          "num_predict": 50
+        }
+      }
+    ]
+  }
+}
