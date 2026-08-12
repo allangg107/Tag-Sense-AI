@@ -4,6 +4,9 @@
 Write-Host "🚀 Starting Tag Sense AI..." -ForegroundColor Green
 Write-Host "=" * 50
 
+# Remember the repo root so we can always restore it before exiting
+$rootPath = (Get-Location).Path
+
 # Check if we're in the correct directory
 if (-not (Test-Path "Sources\Backend\tagging_api.py")) {
     Write-Host "❌ Error: Please run this script from the Tag-Sense-AI root directory" -ForegroundColor Red
@@ -16,15 +19,15 @@ if (Test-Path ".venv\Scripts\Activate.ps1") {
     Write-Host "🐍 Activating Python virtual environment..." -ForegroundColor Blue
     & .\.venv\Scripts\Activate.ps1
     
-    # Install backend dependencies if requirements.txt exists
-    if (Test-Path "Sources\Backend\requirements.txt") {
+    # Install Python dependencies if requirements.txt exists
+    if (Test-Path "requirements.txt") {
         Write-Host "📦 Checking Python dependencies..." -ForegroundColor Blue
         
         # Check if Flask is installed (key dependency)
         $flaskCheck = & python -c "import flask; print('Flask installed')" 2>$null
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Installing missing Python dependencies..." -ForegroundColor Yellow
-            pip install -r Sources\Backend\requirements.txt
+            pip install -r requirements.txt
             if ($LASTEXITCODE -ne 0) {
                 Write-Host "❌ Failed to install Python dependencies" -ForegroundColor Red
                 exit 1
@@ -38,10 +41,10 @@ if (Test-Path ".venv\Scripts\Activate.ps1") {
     Write-Host "🐍 Activating Python virtual environment..." -ForegroundColor Blue
     & .\.venv\Scripts\activate.bat
     
-    # Install backend dependencies if requirements.txt exists
-    if (Test-Path "Sources\Backend\requirements.txt") {
+    # Install Python dependencies if requirements.txt exists
+    if (Test-Path "requirements.txt") {
         Write-Host "📦 Installing Python dependencies..." -ForegroundColor Blue
-        pip install -r Sources\Backend\requirements.txt
+        pip install -r requirements.txt
         if ($LASTEXITCODE -ne 0) {
             Write-Host "❌ Failed to install Python dependencies" -ForegroundColor Red
             exit 1
@@ -91,9 +94,9 @@ Write-Host "🐍 Starting Python Backend..." -ForegroundColor Blue
 Write-Host "Backend will run on: http://127.0.0.1:5000" -ForegroundColor Cyan
 
 # Start Python backend in a new PowerShell window
-$backendPath = Join-Path $PWD "Sources\Backend"
+$backendPath = Join-Path $rootPath "Sources\Backend"
 if (Test-Path ".venv\Scripts\Activate.ps1") {
-    $backendScript = "cd '$backendPath'; & '$PWD\.venv\Scripts\Activate.ps1'; python tagging_api.py"
+    $backendScript = "cd '$backendPath'; & '$rootPath\.venv\Scripts\Activate.ps1'; python tagging_api.py"
 } else {
     $backendScript = "cd '$backendPath'; python tagging_api.py"
 }
@@ -111,7 +114,7 @@ Write-Host "🦀 Starting Tauri Frontend..." -ForegroundColor Blue
 Write-Host "Frontend will run on: http://localhost:1420" -ForegroundColor Cyan
 
 # Navigate to frontend directory and start Tauri
-$frontendPath = Join-Path $PWD "Sources\Frontend\tauri-app"
+$frontendPath = Join-Path $rootPath "Sources\Frontend\tauri-app"
 
 try {
     Set-Location $frontendPath
@@ -122,7 +125,7 @@ try {
         npm install
         if ($LASTEXITCODE -ne 0) {
             Write-Host "❌ Failed to install npm dependencies" -ForegroundColor Red
-            Set-Location $PWD
+            Set-Location $rootPath
             exit 1
         }
     }
@@ -147,7 +150,7 @@ catch {
 }
 finally {
     # Return to original directory
-    Set-Location $PWD
+    Set-Location $rootPath
 }
 
 Write-Host ""
